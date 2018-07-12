@@ -1,10 +1,8 @@
-from random import sample, shuffle, seed
+from random import sample, shuffle, seed, randint
 import csv
 
-# http://www.spacecowboys.fr/img/games/splendor/details/rules/Rules_Splendor_US.pdf
-# in our implementation hand cards are visible to everyone
-
-GEMS = ('r', 'g', 'b', 'w', 'k', 'y') # red, green, blue, white, black, yellow(gold)
+GOLD_GEM = 'y'
+GEMS = ('r', 'g', 'b', 'w', 'k', GOLD_GEM) # red, green, blue, white, black, yellow(gold)
 ACTIONS = ('t', 'r', 'p', 'h') # take gems, reserve card, purchase card, purchase hand card
 CARD_LEVELS = 3
 
@@ -40,6 +38,26 @@ class Noble:
         if price is None:
             self.price = GemSet()
 
+    @staticmethod
+    def parse_str(string):
+        '''Parse from string (assumes serialization by self method str)'''
+        assert len(string) >= 8
+        points = int(string[1])
+        num_gems = (len(string) - 4)//2
+        assert num_gems >= 2 and num_gems <= 3
+        price = GemSet()
+        for n in range(num_gems):
+            gem = string[2*n + 3]
+            count = int(string[2*n + 4])
+            price.add(gem, count)
+        return points, price
+
+    @classmethod
+    def from_str(cls, string):
+        '''Alternative constructor from string'''
+        points, price = Noble.parse_str(string)
+        return cls(points, price)
+
     def __str__(self):
         return '[' + str(self.points) + '|' + str(self.price) + ']'
 
@@ -70,7 +88,8 @@ def read_cards_from_csv(file_name):
         cards[level].append(card)
     return tuple([tuple(cards[n]) for n in range(CARD_LEVELS)])
 
-NOBLES = ()
+NOBLES = tuple(map(Noble.from_str, ['[3|r4g4]', '[3|g4b4]', '[3|b4w4]', '[3|w4k4]', '[3|k4r4]',
+    '[3|r3g3b3]', '[3|b3g3w3]', '[3|b3w3k3]', '[3|w3k3r3]', '[3|k3r3g3]']))
 CARDS = read_cards_from_csv('cards.csv')
 
 class SplendorPlayerState:
@@ -96,7 +115,7 @@ class SplendorPlayerState:
         '''Returns false if player can\'t afford card'''
         gems_to_pay = GemSet()
 
-        gold = self.gems.get('y') # gold available 
+        gold = self.gems.get(GOLD_GEM) # gold available 
         for gem, price in card.price.items():
             to_pay = max(0, price - self.cards.get(gem))
             available = self.gems.get(gem) 
@@ -104,7 +123,7 @@ class SplendorPlayerState:
                 pay_by_gold = to_pay - available # may be covered by gold
                 if gold < pay_by_gold:
                     return False
-                gems_to_pay.add('y', pay_by_gold)
+                gems_to_pay.add(GOLD_GEM, pay_by_gold)
                 to_pay -= pay_by_gold
                 gold -= pay_by_gold
             gems_to_pay.add(gem, to_pay)
@@ -117,6 +136,23 @@ class SplendorPlayerState:
         self.cards.add(card.gem, 1)
         self.points += card.points
         return True
+
+    def get_noble(self, nobles):
+        '''Attempts to acquire noble card. In case of success removes taken noble from input list'''
+        noble_list = []
+        for n, noble in enumerate(nobles):
+            can_afford = True
+            for gem, price in noble.price.items():
+                if self.cards.get(gem) < price:
+                    can_afford = False
+                    break
+            if can_afford:
+                noble_list.append(n)
+        
+        if noble_list:
+            n = randint(1, len(noble_list))# choose random if more than one available
+            noble = nobles.pop(noble_list[n])
+            self.points += noble.points
 
 class Action:
     take = ACTIONS[0] # take gems
@@ -140,14 +176,14 @@ class Action:
             self.pos = self.scan_pos(action_str) 
         elif self.type == Action.purchase_hand: 
             assert len(action_str) == 2
-            self.pos = int(action_str[1]) # single int -- number of hand card
+            self.pos = int(action_str[1]) - 1 # single int -- position of hand card
         else:
             raise AttributeError('Invalid action type {} (in action {})'.format(self.type, action_str))
 
     def scan_pos(self, action_str):
         assert len(action_str) == 3
-        level = int(action_str[1])
-        pos = int(action_str[2])
+        level = int(action_str[1]) - 1
+        pos = int(action_str[2]) - 1
         return level, pos
 
 class SplendorGameRules:
@@ -175,9 +211,8 @@ class SplendorGameState:
         self.num_moves = 0
         self.player_to_move = 0
 
-        # init nobles TODO
-        #self.nobles = sample(NOBLES, self.rules.max_nobles)
-        self.nobles = ()
+        # init nobles
+        self.nobles = sample(NOBLES, self.rules.max_nobles)
 
         # init decks and cards 
         self.decks = []
@@ -220,16 +255,12 @@ class SplendorGameState:
 
         return s 
 
-    def get_table_card(self, level, pos):
-        return self.cards[level-1][pos-1]
-
     def new_table_card(self, level, pos):
         '''Put new card on table if player reserved/purchased card'''
         new_card = None
-        if len(self.decks[level]) > 0:
+        if self.decks[level]:
             new_card = self.decks[level].pop()
-        self.cards[level-1][pos-1] = new_card
-
+        self.cards[level][pos] = new_card
 
     def action(self, action_str):
         action = Action(action_str)
@@ -240,7 +271,7 @@ class SplendorGameState:
             unique_gems = set(gems)
             if len(gems) > self.rules.max_gems_take:
                 raise AttributeError('Invalid gem amount {} (in action {})'.format(len(gems), action_str))
-            if len(unique_gems) == 1 and len(gems) != self.rules.max_same_gems_take: 
+            if len(unique_gems) == 1 and len(gems) != 1 and len(gems) != self.rules.max_same_gems_take: 
                 raise AttributeError('Invalid amount of identical gems (in action {})'.format(action_str))
             if len(unique_gems) > 1 and len(unique_gems) != len(gems): 
                 raise AttributeError('Invalid amount of identical gems (in action {})'.format(action_str))
@@ -250,7 +281,7 @@ class SplendorGameState:
             for gem in gems:
                 if gem not in GEMS:
                     raise AttributeError('Invalid gem ({}) in action {}'.format(gem, action_str))
-                if gem == 'y':
+                if gem == GOLD_GEM:
                     raise AttributeError('You are not allowed to take gold gem (in action {})'.format(action_str))
                 if self.gems.get(gem) == 0:
                     raise AttributeError('Not inough {} gems on table (in action {})'.format(gem, action_str))
@@ -259,31 +290,36 @@ class SplendorGameState:
                 self.gems.add(gem, -1)
 
         elif action.type == Action.reserve: 
-            level, pos = action.pos # pos=0 means blind reserve from deck
-            assert level > 0 and level <= CARD_LEVELS
-            assert pos >= 0 and pos < len(self.cards[level])
+            level, pos = action.pos
+            assert level >= 0 and level < CARD_LEVELS
+            assert pos >= -1 and pos < len(self.cards[level])
 
-            if len(player.hand) >= self.rules.max_hand_cards:
-                raise AttributeError('Player can\'t reserve with {} cards in hand (in action {})'.format(len(player.hand), action_str))
+            if len(player.hand_cards) >= self.rules.max_hand_cards:
+                raise AttributeError('Player can\'t reserve more than {} cards (in action {})'.format(self.rules.max_hand_cards, action_str))
 
-            if pos > 0:
-                card = self.get_table_card(level, pos)
-                player.hand_cards.append(card)
+            card = None
+            if pos >= 0:
+                card = self.cards[level][pos]
                 self.new_table_card(level, pos)
-            if pos == 0:
-                assert len(self.decks[level]) > 0
-                new_card = self.decks[level].pop()
-                player.hand_cards.append(new_card)
+            if pos == -1: # blind reserve from deck
+                assert self.decks[level]
+                card = self.decks[level].pop()
+            player.hand_cards.append(card)
+            if self.gems.get(GOLD_GEM) > 0:
+                player.gems.add(GOLD_GEM, 1)
+                self.gems.add(GOLD_GEM, -1)
 
         elif action.type == Action.purchase: 
             level, pos = action.pos 
-            assert level > 0 and level <= CARD_LEVELS
-            assert pos > 0 and pos < self.rules.max_open_cards
+            assert level >= 0 and level < CARD_LEVELS
+            assert pos >= 0 and pos < self.rules.max_open_cards
 
-            card = self.get_table_card(level, pos)
+            card = self.cards[level][pos]
             if not player.purchase_card(card):
                 raise AttributeError('Player can\'t afford card (in action {})'.format(action_str))
             self.new_table_card(level, pos)
+
+            player.get_noble(self.nobles) # try to get noble
 
         elif action.type == Action.purchase_hand: 
             pos = action.pos # position of card in hand
@@ -292,7 +328,10 @@ class SplendorGameState:
             card = player.hand_cards[pos]
             if not player.purchase_card(card):
                 raise AttributeError('Player can\'t afford card (in action {})'.format(action_str))
-            player.pop(pos) # remove card from hand
+            player.hand_card.pop(pos) # remove card from hand
+
+            player.get_noble(self.nobles) # try to get noble
+
         else:
             raise AttributeError('Invalid action type {} (in action {})'.format(action.type, action_str))
 
