@@ -161,7 +161,10 @@ class Action:
     purchase_hand = ACTIONS[3] # purchase hand card
 
     def __init__(self, action_str):
-        self.parse(action_str)
+        try:
+            self.parse(action_str)
+        except Exception:
+            raise AttributeError('Invalid action string {}'.format(action_str))
 
     def parse(self, action_str):
         self.type = action_str[0] # should be one of ACTIONS
@@ -197,6 +200,7 @@ class SplendorGameRules:
         self.max_nobles = self.num_players + 1
         self.max_gems_take = 3 # max gems to take
         self.max_same_gems_take = 2 # max same color gems to take
+        self.min_same_gems_stack = 4 # min size of gem stack from which you can take 2 same color gems
         self.max_gold = 5
         self.max_gems = 7 # max same color gems on table (except gold)
         if self.num_players < 4:
@@ -268,41 +272,48 @@ class SplendorGameState:
 
         if action.type == Action.take: 
             gems = action.gems
-            unique_gems = set(gems)
+            unique_gems = list(set(gems))
             if len(gems) > self.rules.max_gems_take:
-                raise AttributeError('Invalid gem amount {} (in action {})'.format(len(gems), action_str))
-            if len(unique_gems) == 1 and len(gems) != 1 and len(gems) != self.rules.max_same_gems_take: 
-                raise AttributeError('Invalid amount of identical gems (in action {})'.format(action_str))
+                raise AttributeError('Can\'t take more than {} gems'.format(self.rules.max_gems_take))
+            if len(unique_gems) == 1: # all same color
+                if self.gems.get(unique_gems[0]) < self.rules.min_same_gems_stack:
+                    raise AttributeError('Should be at least {} gems in stack'.format(self.rules.min_same_gems_stack))
+                if len(gems) != 1 and len(gems) > self.rules.max_same_gems_take: 
+                    raise AttributeError('Can\'t take more than {} identical gems'.format(self.rules.max_same_gems_take))
             if len(unique_gems) > 1 and len(unique_gems) != len(gems): 
-                raise AttributeError('Invalid amount of identical gems (in action {})'.format(action_str))
+                raise AttributeError('You can either take all identical or all different gems')
             if player.gem_count + len(gems) > self.rules.max_player_gems:
-                raise AttributeError('Player will receive more than {} gems (in action {})'.format(self.rules.max_player_gems, action_str))
+                raise AttributeError('Player can\'t have more than {} gems'.format(self.rules.max_player_gems))
 
             for gem in gems:
                 if gem not in GEMS:
-                    raise AttributeError('Invalid gem ({}) in action {}'.format(gem, action_str))
+                    raise AttributeError('Invalid gem {}'.format(gem))
                 if gem == GOLD_GEM:
-                    raise AttributeError('You are not allowed to take gold gem (in action {})'.format(action_str))
+                    raise AttributeError('You are not allowed to take gold ({}) gem'.format(GOLD_GEM))
                 if self.gems.get(gem) == 0:
-                    raise AttributeError('Not inough {} gems on table (in action {})'.format(gem, action_str))
+                    raise AttributeError('Not inough {} gems on table'.format(gem))
                 
                 player.gems.add(gem, 1)
                 self.gems.add(gem, -1)
 
         elif action.type == Action.reserve: 
             level, pos = action.pos
-            assert level >= 0 and level < CARD_LEVELS
-            assert pos >= -1 and pos < len(self.cards[level])
-
+            if level < 0 or level >= CARD_LEVELS:
+                raise AttributeError('Invalid deck level {}'.format(level + 1))
+            if pos < -1 or pos >= len(self.cards[level]):
+                raise AttributeError('Invalid card position {}'.format(pos + 1))
             if len(player.hand_cards) >= self.rules.max_hand_cards:
-                raise AttributeError('Player can\'t reserve more than {} cards (in action {})'.format(self.rules.max_hand_cards, action_str))
+                raise AttributeError('Player can\'t reserve more than {} cards'.format(self.rules.max_hand_cards))
 
             card = None
             if pos >= 0:
                 card = self.cards[level][pos]
+                if card is None:
+                    raise AttributeError('Card already taken')
                 self.new_table_card(level, pos)
             if pos == -1: # blind reserve from deck
-                assert self.decks[level]
+                if not self.decks[level]:
+                    raise AttributeError('Deck {} is empty'.format(level + 1))
                 card = self.decks[level].pop()
             player.hand_cards.append(card)
             if self.gems.get(GOLD_GEM) > 0:
@@ -311,23 +322,26 @@ class SplendorGameState:
 
         elif action.type == Action.purchase: 
             level, pos = action.pos 
-            assert level >= 0 and level < CARD_LEVELS
-            assert pos >= 0 and pos < self.rules.max_open_cards
+            if level < 0 or level >= CARD_LEVELS:
+                raise AttributeError('Invalid deck level {}'.format(level + 1))
+            if pos < 0 or pos >= self.rules.max_open_cards:
+                raise AttributeError('Invalid card position {}'.format(pos + 1))
 
             card = self.cards[level][pos]
             if not player.purchase_card(card):
-                raise AttributeError('Player can\'t afford card (in action {})'.format(action_str))
+                raise AttributeError('Player can\'t afford card')
             self.new_table_card(level, pos)
 
             player.get_noble(self.nobles) # try to get noble
 
         elif action.type == Action.purchase_hand: 
             pos = action.pos # position of card in hand
-            assert pos > 0 and pos < self.rules.max_hand_cards
+            if pos < 0 or pos >= len(player.hand_cards):
+                raise AttributeError('Invalid card position in hand {}'.format(pos + 1))
 
             card = player.hand_cards[pos]
             if not player.purchase_card(card):
-                raise AttributeError('Player can\'t afford card (in action {})'.format(action_str))
+                raise AttributeError('Player can\'t afford card')
             player.hand_card.pop(pos) # remove card from hand
 
             player.get_noble(self.nobles) # try to get noble
