@@ -19,6 +19,10 @@ class GemSet:
     def get(self, gem):
         return self.gems.get(gem, 0)
 
+    def __setitem__(self, gem, count):
+        assert count >= 0
+        self.gems[gem] = count
+
     def items(self):
         return self.gems.items()
 
@@ -27,9 +31,26 @@ class GemSet:
         for gem in GEMS: # preserve gem order
             if gem in self.gems:
                 count = self.get(gem)
-                if count  > 0:
+                if count > 0:
                     s += gem + str(count)
         return s
+
+    def shortage(self, price):
+        '''Returns list of additional gems required. Gold is not taken into account.'''
+        shortage = GemSet()
+        for gem, count in price.items():
+            assert gem is not GOLD_GEM
+            diff = count - self.get(gem)
+            if diff > 0:
+                shortage.add(gem, diff)
+        return shortage
+
+    def count(self):
+        '''Total count of all gems in set''' 
+        total = 0
+        for _, count in self.items():
+            total += count
+        return total
 
 class Noble:
     def __init__(self, points=0, price=None):
@@ -112,26 +133,23 @@ class SplendorPlayerState:
         return s
 
     def purchase_card(self, card):
-        '''Returns false if player can\'t afford card'''
-        gems_to_pay = GemSet()
+        '''Does card purchase. Returns false if player can\'t afford card'''
 
+        shortage = self.gems.shortage(card.price)
         gold = self.gems.get(GOLD_GEM) # gold available 
-        for gem, price in card.price.items():
-            to_pay = max(0, price - self.cards.get(gem))
-            available = self.gems.get(gem) 
-            if available < to_pay:
-                pay_by_gold = to_pay - available # may be covered by gold
-                if gold < pay_by_gold:
-                    return False
-                gems_to_pay.add(GOLD_GEM, pay_by_gold)
-                to_pay -= pay_by_gold
-                gold -= pay_by_gold
-            gems_to_pay.add(gem, to_pay)
+        gold_to_pay = shortage.count()
+        if gold < gold_to_pay:
+            return False
 
-        # if everything goes smooth, do actual payment
-        for gem, to_pay in gems_to_pay.items():
-            self.gems.add(gem, -to_pay)
-            self.gem_count -= to_pay
+        # if player can afford card, do actual payment
+        if gold_to_pay > 0:
+            self.gems.add(GOLD_GEM, -gold_to_pay)
+        for gem, price in card.price.items():
+            if gem in shortage.gems: # have to pay by gold => new gem count is zero
+                self.gems[gem] = 0
+            else:
+                self.gems.add(gem, -price)
+        self.gem_count -= card.price.count()
 
         self.cards.add(card.gem, 1)
         self.points += card.points
@@ -160,30 +178,47 @@ class Action:
     purchase = ACTIONS[2] # purchase table card
     purchase_hand = ACTIONS[3] # purchase hand card
 
-    def __init__(self, action_str):
+    def __init__(self, action_type, gems, pos):
+        self.type = action_type
+        self.gems = gems
+        self.pos = pos
+
+    def __str__(self):
+        if self.type == Action.take: 
+            return Action.take + ''.join(self.gems)
+        else:
+            return self.type.join(map(str, self.pos))
+
+    @classmethod
+    def from_str(cls, action_str):
         try:
-            self.parse(action_str)
+            action_type, gems, pos = Action.parse(action_str)
+            return cls(action_type, gems, pos)
         except Exception:
             raise AttributeError('Invalid action string {}'.format(action_str))
 
-    def parse(self, action_str):
-        self.type = action_str[0] # should be one of ACTIONS
-        self.gems = None
-        self.pos = None
+    @staticmethod
+    def parse(action_str):
+        action_type = action_str[0] # should be one of ACTIONS
+        gems = None
+        pos = None
 
-        if self.type == Action.take: 
-            self.gems = [g for g in action_str[1:]]
-        elif self.type == Action.reserve: 
-            self.pos = self.scan_pos(action_str) # (level, pos)
-        elif self.type == Action.purchase: 
-            self.pos = self.scan_pos(action_str) 
-        elif self.type == Action.purchase_hand: 
+        if action_type == Action.take: 
+            gems = [g for g in action_str[1:]]
+        elif action_type == Action.reserve: 
+            pos = Action.scan_pos(action_str) # (level, pos)
+        elif action_type == Action.purchase: 
+            pos = Action.scan_pos(action_str) 
+        elif action_type == Action.purchase_hand: 
             assert len(action_str) == 2
-            self.pos = int(action_str[1]) - 1 # single int -- position of hand card
+            pos = (int(action_str[1]) - 1,) # single int -- position of hand card
         else:
-            raise AttributeError('Invalid action type {} (in action {})'.format(self.type, action_str))
+            raise AttributeError('Invalid action type {} (in action {})'.format(action_type, action_str))
+        
+        return action_type, gems, pos
 
-    def scan_pos(self, action_str):
+    @staticmethod
+    def scan_pos(action_str):
         assert len(action_str) == 3
         level = int(action_str[1]) - 1
         pos = int(action_str[2]) - 1
@@ -266,8 +301,7 @@ class SplendorGameState:
             new_card = self.decks[level].pop()
         self.cards[level][pos] = new_card
 
-    def action(self, action_str):
-        action = Action(action_str)
+    def action(self, action):
         player = self.players[self.player_to_move]
 
         if action.type == Action.take: 
@@ -335,7 +369,7 @@ class SplendorGameState:
             player.get_noble(self.nobles) # try to get noble
 
         elif action.type == Action.purchase_hand: 
-            pos = action.pos # position of card in hand
+            pos, = action.pos # position of card in hand
             if pos < 0 or pos >= len(player.hand_cards):
                 raise AttributeError('Invalid card position in hand {}'.format(pos + 1))
 
@@ -347,7 +381,7 @@ class SplendorGameState:
             player.get_noble(self.nobles) # try to get noble
 
         else:
-            raise AttributeError('Invalid action type {} (in action {})'.format(action.type, action_str))
+            raise AttributeError('Invalid action type {}'.format(action.type))
 
         self.player_to_move = (self.player_to_move + 1) % self.rules.num_players
         if self.player_to_move == 0: # round end
@@ -363,7 +397,7 @@ class SplendorGameState:
         '''Returns name of best player'''
         scores = [(player.score, player.name) for player in self.players]
         return sorted(scores, reverse=True)[0]
-        
+
 
 
         
