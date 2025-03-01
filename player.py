@@ -1,4 +1,4 @@
-from game import SplendorGameState, SplendorPlayerState, GOLD_GEM, Action
+from splendor_game import SplendorGameState, SplendorPlayerState, GOLD_GEM, Action
 
 class HumanPlayer:
     is_ai = False

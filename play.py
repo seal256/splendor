@@ -1,4 +1,4 @@
-from game import SplendorGameState, SplendorGameRules, Action
+from splendor_game import SplendorGameState, SplendorGameRules, Action
 from player import HumanPlayer, CultivatorPlayer
 
 def human_game():
