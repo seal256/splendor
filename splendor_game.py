@@ -193,23 +193,27 @@ class SplendorPlayerState:
             self.points += noble.points
 
 class Action:
-    def __init__(self, action_type: ActionType, gems=None, level=None, pos=None):
-        self.type = action_type
-        self.gems = gems
-        self.level = level
-        self.pos = pos
+    def __init__(self, action_type: ActionType, gems: list[str] = None, level: int = None, pos:int = None):
+        self.type: ActionType = action_type
+        self.gems: list[str] = gems # list of gem symbols 
+        self.level: int = level
+        self.pos: int = pos
 
     def __str__(self):
         if self.type == ActionType.take: 
-            return ActionType.take + ''.join(self.gems)
+            return self.type + ''.join(self.gems)
+        elif self.type == ActionType.reserve or self.type == ActionType.purchase or self.type == ActionType.new_table_card:
+            return f'{self.type}{self.level}n{self.pos}'
+        elif self.type == ActionType.purchase_hand:
+            return f'{self.type}{self.level}'
         else:
-            return self.type.join(map(str, self.pos))
+            raise ValueError('Unknown action type')
 
     @classmethod
     def from_str(cls, action_str):
         try:
-            action_type, gems, pos = Action.parse(action_str)
-            return cls(action_type, gems, pos)
+            action_type, gems, level, pos = Action.parse(action_str)
+            return cls(action_type, gems, level, pos)
         except Exception:
             raise AttributeError('Invalid action string {}'.format(action_str))
 
@@ -430,11 +434,12 @@ class SplendorGameState(GameState):
             self.table_card_needed = True
             self.deck_level = level
 
-    def get_actions(self):
+    def get_actions(self) -> list[Action]:
         if self.table_card_needed:
             # move of the gods of randomness, no player is involved
-            action = ActionType.new_table_card
-            actions = [f'{action}{self.level}n{n}' for n in range(len(self.decks[self.deck_level]))]
+            action_type = ActionType.new_table_card
+            level = self.deck_level
+            actions = [Action(action_type, gems=None, level=level, pos=n) for n in range(len(self.decks[level]))]
             return actions
         
         actions = []
@@ -442,37 +447,38 @@ class SplendorGameState(GameState):
 
         # 1. Take new gems
         # 2 same gems
-        action = ActionType.take
+        action_type = ActionType.take
         if player.gem_count < self.rules.max_player_gems - self.rules.max_same_gems_take: 
             for gem, count in self.gems.items():
                 if count >= self.rules.min_same_gems_stack:
-                    actions.append(f'{action}{gem}')
-
+                    actions.append(Action(action_type, [gem] * self.rules.max_same_gems_take))
+                    
         # 3 distinct gems
         if player.gem_count < self.rules.max_player_gems - self.rules.max_gems_take:
             available_gems = [g for g in GEMS[:-1] if self.gems.get(g) > 0]
             for comb_gems in combinations(available_gems, self.rules.max_gems_take):
-                actions.append(f'{action}{"".join(comb_gems)}')
+                actions.append(Action(action_type, comb_gems))
 
         # 2. Reserve a card
         if len(player.hand_cards) < self.rules.max_hand_cards:
-            action = ActionType.reserve
+            action_type = ActionType.reserve
             for level in range(CARD_LEVELS):
                 for pos in range(len(self.cards[level])):
-                    actions.append(f'{action}{level}n{pos}')
+                    actions.append(Action(action_type, gems=None, level=level, pos=pos))
+                    
 
         # 3. Purchase a card from table
-        action = ActionType.purchase
+        action_type = ActionType.purchase
         for level in range(CARD_LEVELS):
             for pos, card in enumerate(self.cards[level]):
                 if player.can_afford_card(card):
-                    actions.append(f'{action}{level}n{pos}')
+                    actions.append(Action(action_type, gems=None, level=level, pos=pos))
 
         # 4. Purchase a card from the hand
         if player.hand_cards:
-            action = ActionType.purchase_hand
+            action_type = ActionType.purchase_hand
             for pos in range(len(player.hand_cards)):
-                actions.append(f'{action}{pos}')
+                actions.append(Action(action_type, gems=None, level=None, pos=pos))
 
         return actions
 
