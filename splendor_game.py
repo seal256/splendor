@@ -6,9 +6,15 @@ from game import GameState
 
 GOLD_GEM = 'y'
 GEMS = ('r', 'g', 'b', 'w', 'k', GOLD_GEM) # red, green, blue, white, black, yellow(gold)
-ACTIONS = ('t', 'r', 'p', 'h', 'c') # take gems, reserve card, purchase card, purchase hand card, new card from deck
 CARD_LEVELS = 3
 
+class ActionType:
+    take = 't' # take gems
+    reserve = 'r' # reserve card
+    purchase = 'p' # purchase table card
+    purchase_hand = 'h' # purchase hand card
+    new_table_card = 'c' # new table card from deck. Performed by randomness rather than any of the players
+   
 class GemSet:
     '''Set of gems with count (or price) each'''
     def __init__(self):
@@ -187,21 +193,15 @@ class SplendorPlayerState:
             self.points += noble.points
 
 class Action:
-    take = ACTIONS[0] # take gems
-    reserve = ACTIONS[1] # reserve card
-    purchase = ACTIONS[2] # purchase table card
-    purchase_hand = ACTIONS[3] # purchase hand card
-    new_table_card = ACTIONS[4] # new table card. Performed by randomness rather than any of the players
-
-    def __init__(self, action_type, gems=None, level=None, pos=None):
+    def __init__(self, action_type: ActionType, gems=None, level=None, pos=None):
         self.type = action_type
         self.gems = gems
         self.level = level
         self.pos = pos
 
     def __str__(self):
-        if self.type == Action.take: 
-            return Action.take + ''.join(self.gems)
+        if self.type == ActionType.take: 
+            return ActionType.take + ''.join(self.gems)
         else:
             return self.type.join(map(str, self.pos))
 
@@ -220,16 +220,16 @@ class Action:
         level = None
         pos = None
 
-        if action_type == Action.take: 
+        if action_type == ActionType.take: 
             gems = [g for g in action_str[1:]]
-        elif action_type == Action.reserve: 
+        elif action_type == ActionType.reserve: 
             level, pos = Action.scan_level_pos(action_str)
-        elif action_type == Action.purchase: 
+        elif action_type == ActionType.purchase: 
             level, pos = Action.scan_level_pos(action_str) 
-        elif action_type == Action.purchase_hand: 
-            pos = (int(action_str[1]) - 1,) # the 1-based index of a hand card
-        elif action_type == Action.new_table_card:
-            pos = (int(action_str[1:]) - 1,) # the 1-based index of a deck card
+        elif action_type == ActionType.purchase_hand: 
+            pos = (int(action_str[1:]),) # the 0-based index of a hand card
+        elif action_type == ActionType.new_table_card:
+            pos = (int(action_str[1:]),) # the 0-based index of a deck card
         else:
             raise AttributeError('Invalid action type {} (in action {})'.format(action_type, action_str))
         
@@ -320,7 +320,7 @@ class SplendorGameState(GameState):
     def apply_action(self, action: Action):
         player = self.players[self.player_to_move]
 
-        if action.type == Action.take: 
+        if action.type == ActionType.take: 
             gems = action.gems
             unique_gems = list(set(gems))
             if len(gems) > self.rules.max_gems_take:
@@ -348,7 +348,7 @@ class SplendorGameState(GameState):
             
             self._increment_player_to_move()
 
-        elif action.type == Action.reserve: 
+        elif action.type == ActionType.reserve: 
             # level and pos indicate the position of the card to reserve on the table
             if action.level < 0 or action.level >= CARD_LEVELS:
                 raise AttributeError('Invalid deck level {}'.format(action.level))
@@ -373,7 +373,7 @@ class SplendorGameState(GameState):
 
             self._increment_player_to_move()
 
-        elif action.type == Action.purchase: 
+        elif action.type == ActionType.purchase: 
             # level and pos indicate the position of the card to purchase on the table
             if action.level < 0 or action.level >= CARD_LEVELS:
                 raise AttributeError('Invalid deck level {}'.format(action.level))
@@ -388,7 +388,7 @@ class SplendorGameState(GameState):
             player.get_noble(self.nobles) # try to get a noble
             self._increment_player_to_move()
 
-        elif action.type == Action.purchase_hand: 
+        elif action.type == ActionType.purchase_hand: 
             # pos is the position of the card in hand
             if action.pos < 0 or action.pos >= len(player.hand_cards):
                 raise AttributeError('Invalid card position in hand {}'.format(action.pos))
@@ -401,7 +401,7 @@ class SplendorGameState(GameState):
             player.get_noble(self.nobles) # try to get a noble
             self._increment_player_to_move()
 
-        elif action.type == Action.new_table_card:
+        elif action.type == ActionType.new_table_card:
             # The game is in an intermediate state that requires to select a new random card from the deck.
             # This (strange) state is reuired to allow "choice" game nodes of search algorithms to work correctly
 
@@ -433,7 +433,7 @@ class SplendorGameState(GameState):
     def get_actions(self):
         if self.table_card_needed:
             # move of the gods of randomness, no player is involved
-            action = Action.new_table_card
+            action = ActionType.new_table_card
             actions = [f'{action}{self.level}n{n}' for n in range(len(self.decks[self.deck_level]))]
             return actions
         
@@ -442,7 +442,7 @@ class SplendorGameState(GameState):
 
         # 1. Take new gems
         # 2 same gems
-        action = Action.take
+        action = ActionType.take
         if player.gem_count < self.rules.max_player_gems - self.rules.max_same_gems_take: 
             for gem, count in self.gems.items():
                 if count >= self.rules.min_same_gems_stack:
@@ -456,13 +456,13 @@ class SplendorGameState(GameState):
 
         # 2. Reserve a card
         if len(player.hand_cards) < self.rules.max_hand_cards:
-            action = Action.reserve
+            action = ActionType.reserve
             for level in range(CARD_LEVELS):
                 for pos in range(len(self.cards[level])):
                     actions.append(f'{action}{level}n{pos}')
 
         # 3. Purchase a card from table
-        action = Action.purchase
+        action = ActionType.purchase
         for level in range(CARD_LEVELS):
             for pos, card in enumerate(self.cards[level]):
                 if player.can_afford_card(card):
@@ -470,7 +470,7 @@ class SplendorGameState(GameState):
 
         # 4. Purchase a card from the hand
         if player.hand_cards:
-            action = Action.purchase_hand
+            action = ActionType.purchase_hand
             for pos in range(len(player.hand_cards)):
                 actions.append(f'{action}{pos}')
 
