@@ -1,6 +1,7 @@
 from copy import deepcopy
 import math
 import random
+from tqdm import tqdm
 
 from game import GameState
 
@@ -21,7 +22,7 @@ class MCTS:
 
     def search(self):
         '''Grows the search tree and returns the best expected action'''
-        for _ in range(self.iterations):
+        for _ in tqdm(range(self.iterations)):
             self._search_iteration()
         return self.best_action()
 

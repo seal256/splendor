@@ -1,49 +1,27 @@
 from splendor_game import SplendorGameState, SplendorGameRules, Action
-from player import HumanPlayer, CultivatorPlayer
+from agents import Agent, HumanPlayer, CultivatorPlayer, RandomAgent, MCTSAgent
+from game import GameState
 
-def human_game():
-    player_names = ['player1', 'player2']
-    rules = SplendorGameRules(len(player_names))
-    game = SplendorGameState(player_names, rules)
+def game_round(game_state: GameState, agents: list[Agent]):
+    active_player = game_state.active_player()
+    while not game_state.is_terminal():
+        if active_player is None: # chance game state
+            action = game_state.get_actions()[0]
+        else:
+            action = agents[active_player].get_action(game_state)
 
-    while not game.is_terminal():
-        for player_name in player_names:
-            print(game)
-            while True: # check for invalid action inputs
-                action_str = input(player_name + ' move: ')
-                try:
-                    game.apply_action(Action.from_str(action_str))
-                    break
-                except AttributeError as err:
-                    print('Invalid action {}: {}'.format(action_str, str(err)))
+        print(game_state)
+        print(f'selected action: {action}\n')
 
-    print('best player:', game.best_player())
+        game_state.apply_action(action)
+        active_player = game_state.active_player()
 
-def computer_game():
-    player_names = ['player1', 'ai']
-    players = [HumanPlayer(), CultivatorPlayer()]
-    rules = SplendorGameRules(len(player_names))
-    game = SplendorGameState(player_names, rules)
-
-    while not game.is_terminal():
-        for n, player in enumerate(players):
-            print(game)
-            while True: # check for invalid action inputs
-                action = player.get_action(game)
-                try:
-                    game.apply_action(action)
-                    break
-                except AttributeError as err:
-                    print('Invalid action {}: {}'.format(str(action), str(err)))
-                    if player.is_ai:
-                        return
-            if player.is_ai:
-                print(player_names[n] + ' move: ' + str(action))
-
-
-    print('best player:', game.best_player())
-
+    print('Final scores:')
+    for n, score in enumerate(game_state.rewards()):
+        print(f'player {n}: score: {score}')
 
 if __name__ == '__main__':
-    computer_game()
-    
+    agents = [RandomAgent(), MCTSAgent()]
+    names = [f'player{n}' for n in range(len(agents))]
+    game_state = SplendorGameState(names, SplendorGameRules(len(agents)))
+    game_round(game_state, agents)

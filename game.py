@@ -39,3 +39,10 @@ class Agent(ABC):
     @abstractmethod
     def get_action(game_state: GameState):
         pass
+
+    # def is_stateless(self):
+    #     return True
+    
+    # def apply_action(action):
+    #     '''Stateful agents should implement this method to keep track of the game'''
+    #     pass

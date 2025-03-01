@@ -9,6 +9,7 @@ GEMS = ('r', 'g', 'b', 'w', 'k', GOLD_GEM) # red, green, blue, white, black, yel
 CARD_LEVELS = 3
 
 class ActionType:
+    skip = 's' # skip the move
     take = 't' # take gems
     reserve = 'r' # reserve card
     purchase = 'p' # purchase table card
@@ -147,7 +148,7 @@ class SplendorPlayerState:
         shortage = self.gems.shortage(card.price)
         gold = self.gems.get(GOLD_GEM) # gold available 
         gold_to_pay = shortage.count()
-        return gold < gold_to_pay
+        return gold >= gold_to_pay
     
     def purchase_card(self, card):
         '''Performes the card purchase. Returns false if player can\'t afford the card'''
@@ -172,7 +173,7 @@ class SplendorPlayerState:
         self.points += card.points
         return True
 
-    def get_noble(self, nobles):
+    def _get_noble(self, nobles):
         '''Attempts to acquire a noble card'''
         
         noble_list = []
@@ -215,7 +216,7 @@ class Action:
             action_type, gems, level, pos = Action.parse(action_str)
             return cls(action_type, gems, level, pos)
         except Exception:
-            raise AttributeError('Invalid action string {}'.format(action_str))
+            raise ValueError('Invalid action string {}'.format(action_str))
 
     @staticmethod
     def parse(action_str):
@@ -235,7 +236,7 @@ class Action:
         elif action_type == ActionType.new_table_card:
             pos = (int(action_str[1:]),) # the 0-based index of a deck card
         else:
-            raise AttributeError('Invalid action type {} (in action {})'.format(action_type, action_str))
+            raise ValueError('Invalid action type {} (in action {})'.format(action_type, action_str))
         
         return action_type, gems, level, pos
 
@@ -272,8 +273,9 @@ class SplendorGameState(GameState):
         assert rules.num_players == len(player_names)
 
         self.rules = rules
-        self.num_moves = 0
+        self.round = 0
         self.player_to_move = 0
+        self.skips = 0 # number of playsers that skipped move in this round. If all players skipped, the game ends prematurely
         self.table_card_needed = False # indicates that previous player just purchased a table card
         self.deck_level = 0 # the level of the deck that will be used to select card if self.table_card_needed is True
 
@@ -300,7 +302,7 @@ class SplendorGameState(GameState):
         self.players = [SplendorPlayerState(name) for name in player_names]
 
     def __str__(self):
-        s = 'move:' + str(self.num_moves) + ' player:' + str(self.player_to_move) + '\n'
+        s = 'round: ' + str(self.round) + ' player to move: ' + str(self.player_to_move) + '\n'
         
         s += 'nobles: '
         for noble in self.nobles:
@@ -314,7 +316,7 @@ class SplendorGameState(GameState):
                     s += str(card) + ' '
             s += '\n'
 
-        s += 'gems:' + str(self.gems) + '\n'
+        s += 'gems: ' + str(self.gems) + '\n'
 
         for player in self.players:
             s += str(player)
@@ -323,29 +325,35 @@ class SplendorGameState(GameState):
 
     def apply_action(self, action: Action):
         player = self.players[self.player_to_move]
+        if self.player_to_move == 0:
+            self.skips = 0 # resets in the beginning of each round
 
-        if action.type == ActionType.take: 
+        if action.type == ActionType.skip:
+            self.skips += 1
+            self._increment_player_to_move()
+
+        elif action.type == ActionType.take: 
             gems = action.gems
             unique_gems = list(set(gems))
             if len(gems) > self.rules.max_gems_take:
-                raise AttributeError('Can\'t take more than {} gems'.format(self.rules.max_gems_take))
+                raise ValueError('Can\'t take more than {} gems'.format(self.rules.max_gems_take))
             if len(unique_gems) == 1: # all same color
                 if self.gems.get(unique_gems[0]) < self.rules.min_same_gems_stack:
-                    raise AttributeError('Should be at least {} gems in stack'.format(self.rules.min_same_gems_stack))
+                    raise ValueError('Should be at least {} gems in stack'.format(self.rules.min_same_gems_stack))
                 if len(gems) != 1 and len(gems) > self.rules.max_same_gems_take: 
-                    raise AttributeError('Can\'t take more than {} identical gems'.format(self.rules.max_same_gems_take))
+                    raise ValueError('Can\'t take more than {} identical gems'.format(self.rules.max_same_gems_take))
             if len(unique_gems) > 1 and len(unique_gems) != len(gems): 
-                raise AttributeError('You can either take all identical or all different gems')
+                raise ValueError('You can either take all identical or all different gems')
             if player.gem_count + len(gems) > self.rules.max_player_gems:
-                raise AttributeError('Player can\'t have more than {} gems'.format(self.rules.max_player_gems))
+                raise ValueError('Player can\'t have more than {} gems'.format(self.rules.max_player_gems))
 
             for gem in gems:
                 if gem not in GEMS:
-                    raise AttributeError('Invalid gem {}'.format(gem))
+                    raise ValueError('Invalid gem {}'.format(gem))
                 if gem == GOLD_GEM:
-                    raise AttributeError('You are not allowed to take gold ({}) gem'.format(GOLD_GEM))
+                    raise ValueError('You are not allowed to take gold ({}) gem'.format(GOLD_GEM))
                 if self.gems.get(gem) == 0:
-                    raise AttributeError('Not inough {} gems on table'.format(gem))
+                    raise ValueError('Not inough {} gems on table'.format(gem))
                 
                 player.gems.add(gem, 1)
                 self.gems.add(gem, -1)
@@ -355,19 +363,19 @@ class SplendorGameState(GameState):
         elif action.type == ActionType.reserve: 
             # level and pos indicate the position of the card to reserve on the table
             if action.level < 0 or action.level >= CARD_LEVELS:
-                raise AttributeError('Invalid deck level {}'.format(action.level))
+                raise ValueError('Invalid deck level {}'.format(action.level))
             if action.pos < 0 or action.pos >= len(self.cards[action.level]):
-                raise AttributeError('Invalid card position {}'.format(action.pos))
+                raise ValueError('Invalid card position {}'.format(action.pos))
             if len(player.hand_cards) >= self.rules.max_hand_cards:
-                raise AttributeError('Player can\'t reserve more than {} cards'.format(self.rules.max_hand_cards))
+                raise ValueError('Player can\'t reserve more than {} cards'.format(self.rules.max_hand_cards))
 
-            card = self.cards[action.level][action.pos]
+            card = self.cards[action.level].pop(action.pos)
             self._set_table_card_needed(action.level)
                 
             # TODO: There's no option to blindly reserve from the deck
-            # if action.pos == -1: # blind reserve from deck
+            # if action.pos == -1: # blind reserve from the deck
             #     if not self.decks[action.level]:
-            #         raise AttributeError('Deck {} is empty'.format(action.level))
+            #         raise ValueError('Deck {} is empty'.format(action.level))
             #     card = self.decks[action.level].pop()
 
             player.hand_cards.append(card)
@@ -380,29 +388,28 @@ class SplendorGameState(GameState):
         elif action.type == ActionType.purchase: 
             # level and pos indicate the position of the card to purchase on the table
             if action.level < 0 or action.level >= CARD_LEVELS:
-                raise AttributeError('Invalid deck level {}'.format(action.level))
+                raise ValueError('Invalid deck level {}'.format(action.level))
             if action.pos < 0 or action.pos >= self.rules.max_open_cards:
-                raise AttributeError('Invalid card position {}'.format(action.pos))
+                raise ValueError('Invalid card position {}'.format(action.pos))
 
             card = self.cards[action.level].pop(action.pos) # takes the card from the table
             if not player.purchase_card(card):
-                raise AttributeError('Player can\'t afford the card')
+                raise ValueError('Player can\'t afford the card')
             self._set_table_card_needed(action.level)
 
-            player.get_noble(self.nobles) # try to get a noble
+            player._get_noble(self.nobles) # try to get a noble
             self._increment_player_to_move()
 
         elif action.type == ActionType.purchase_hand: 
             # pos is the position of the card in hand
             if action.pos < 0 or action.pos >= len(player.hand_cards):
-                raise AttributeError('Invalid card position in hand {}'.format(action.pos))
+                raise ValueError('Invalid card position in hand {}'.format(action.pos))
 
-            card = player.hand_cards[action.pos]
+            card = player.hand_cards.pop(action.pos) # remove card from hand
             if not player.purchase_card(card):
-                raise AttributeError('Player can\'t afford the card')
-            player.hand_card.pop(action.pos) # remove card from hand
+                raise ValueError('Player can\'t afford the card')
 
-            player.get_noble(self.nobles) # try to get a noble
+            player._get_noble(self.nobles) # try to get a noble
             self._increment_player_to_move()
 
         elif action.type == ActionType.new_table_card:
@@ -410,11 +417,11 @@ class SplendorGameState(GameState):
             # This (strange) state is reuired to allow "choice" game nodes of search algorithms to work correctly
 
             if not self.table_card_needed:
-                raise AttributeError('Game does not require a new table card at the moment')
+                raise ValueError('Game does not require a new table card at the moment')
             if action.level < 0 or action.level >= CARD_LEVELS:
-                raise AttributeError('Invalid deck level {}'.format(action.level))
-            if action.pos <= 0 or action.pos >= len(self.decks[action.level]):
-                raise AttributeError('Invalid card position {}'.format(action.pos))
+                raise ValueError('Invalid deck level {}'.format(action.level))
+            if action.pos < 0 or action.pos >= len(self.decks[action.level]):
+                raise ValueError('Invalid card position {}'.format(action.pos))
             
             new_card = self.decks[action.level].pop(action.pos)
             self.cards[action.level].append(new_card)
@@ -422,12 +429,12 @@ class SplendorGameState(GameState):
             # since this is not a player's action, we do not increment the active player's index
 
         else:
-            raise AttributeError('Invalid action type {}'.format(action.type))
+            raise ValueError('Invalid action type {}'.format(action.type))
 
     def _increment_player_to_move(self):
         self.player_to_move = (self.player_to_move + 1) % self.rules.num_players
         if self.player_to_move == 0: # round end
-            self.num_moves += 1
+            self.round += 1
 
     def _set_table_card_needed(self, level):
         if self.decks[level]: # if the deck is not empty
@@ -439,21 +446,25 @@ class SplendorGameState(GameState):
             # move of the gods of randomness, no player is involved
             action_type = ActionType.new_table_card
             level = self.deck_level
-            actions = [Action(action_type, gems=None, level=level, pos=n) for n in range(len(self.decks[level]))]
+            actions = [Action(action_type, level=level, pos=n) for n in range(len(self.decks[level]))]
             return actions
         
         actions = []
+
+        # 0. skip the move
+        actions.append(Action(ActionType.skip))
+
         player: SplendorPlayerState = self.players[self.player_to_move]
 
         # 1. Take new gems
-        # 2 same gems
+        # two same gems
         action_type = ActionType.take
         if player.gem_count < self.rules.max_player_gems - self.rules.max_same_gems_take: 
-            for gem, count in self.gems.items():
-                if count >= self.rules.min_same_gems_stack:
+            for gem in GEMS[:-1]:
+                if self.gems.get(gem) >= self.rules.min_same_gems_stack:
                     actions.append(Action(action_type, [gem] * self.rules.max_same_gems_take))
                     
-        # 3 distinct gems
+        # three distinct gems
         if player.gem_count < self.rules.max_player_gems - self.rules.max_gems_take:
             available_gems = [g for g in GEMS[:-1] if self.gems.get(g) > 0]
             for comb_gems in combinations(available_gems, self.rules.max_gems_take):
@@ -464,7 +475,7 @@ class SplendorGameState(GameState):
             action_type = ActionType.reserve
             for level in range(CARD_LEVELS):
                 for pos in range(len(self.cards[level])):
-                    actions.append(Action(action_type, gems=None, level=level, pos=pos))
+                    actions.append(Action(action_type, level=level, pos=pos))
                     
 
         # 3. Purchase a card from table
@@ -472,13 +483,14 @@ class SplendorGameState(GameState):
         for level in range(CARD_LEVELS):
             for pos, card in enumerate(self.cards[level]):
                 if player.can_afford_card(card):
-                    actions.append(Action(action_type, gems=None, level=level, pos=pos))
+                    actions.append(Action(action_type, level=level, pos=pos))
 
         # 4. Purchase a card from the hand
         if player.hand_cards:
             action_type = ActionType.purchase_hand
-            for pos in range(len(player.hand_cards)):
-                actions.append(Action(action_type, gems=None, level=None, pos=pos))
+            for pos, card in enumerate(player.hand_cards):
+                if player.can_afford_card(card):
+                    actions.append(Action(action_type, pos=pos))
 
         return actions
 
@@ -488,18 +500,24 @@ class SplendorGameState(GameState):
         return self.player_to_move
 
     def is_terminal(self):
+        # the game stops if all players skipped the move in the current round
+        if self.skips >= len(self.players):
+            return True
+        
+        # or one of them got the required number of win points
         for player in self.players:
             if player.points >= self.rules.win_points:
                 return True
+        
         return False
 
     def rewards(self):
         '''Returns the number of win points for each player'''
-        return [player.score for player in self.players]
+        return [player.points for player in self.players]
 
     def best_player(self):
         '''Returns name of best player'''
-        scores = [(player.score, player.name) for player in self.players]
+        scores = [(player.points, player.name) for player in self.players]
         return sorted(scores, reverse=True)[0]
 
 
