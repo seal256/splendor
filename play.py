@@ -6,13 +6,13 @@ def human_game():
     rules = SplendorGameRules(len(player_names))
     game = SplendorGameState(player_names, rules)
 
-    while not game.check_win():
+    while not game.is_terminal():
         for player_name in player_names:
             print(game)
             while True: # check for invalid action inputs
                 action_str = input(player_name + ' move: ')
                 try:
-                    game.action(Action.from_str(action_str))
+                    game.apply_action(Action.from_str(action_str))
                     break
                 except AttributeError as err:
                     print('Invalid action {}: {}'.format(action_str, str(err)))
@@ -25,13 +25,13 @@ def computer_game():
     rules = SplendorGameRules(len(player_names))
     game = SplendorGameState(player_names, rules)
 
-    while not game.check_win():
+    while not game.is_terminal():
         for n, player in enumerate(players):
             print(game)
             while True: # check for invalid action inputs
                 action = player.get_action(game)
                 try:
-                    game.action(action)
+                    game.apply_action(action)
                     break
                 except AttributeError as err:
                     print('Invalid action {}: {}'.format(str(action), str(err)))

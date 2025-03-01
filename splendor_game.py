@@ -1,11 +1,12 @@
 import random
 import csv
+from itertools import combinations
 
 from game import GameState
 
 GOLD_GEM = 'y'
 GEMS = ('r', 'g', 'b', 'w', 'k', GOLD_GEM) # red, green, blue, white, black, yellow(gold)
-ACTIONS = ('t', 'r', 'p', 'h') # take gems, reserve card, purchase card, purchase hand card
+ACTIONS = ('t', 'r', 'p', 'h', 'c') # take gems, reserve card, purchase card, purchase hand card, new card from deck
 CARD_LEVELS = 3
 
 class GemSet:
@@ -134,6 +135,14 @@ class SplendorPlayerState:
         s += '\n'
         return s
 
+    def can_afford_card(self, card):
+        '''Checks if the player can afford the given card'''
+
+        shortage = self.gems.shortage(card.price)
+        gold = self.gems.get(GOLD_GEM) # gold available 
+        gold_to_pay = shortage.count()
+        return gold < gold_to_pay
+    
     def purchase_card(self, card):
         '''Performes the card purchase. Returns false if player can\'t afford the card'''
 
@@ -182,10 +191,12 @@ class Action:
     reserve = ACTIONS[1] # reserve card
     purchase = ACTIONS[2] # purchase table card
     purchase_hand = ACTIONS[3] # purchase hand card
+    new_table_card = ACTIONS[4] # new table card. Performed by randomness rather than any of the players
 
-    def __init__(self, action_type, gems, pos):
+    def __init__(self, action_type, gems=None, level=None, pos=None):
         self.type = action_type
         self.gems = gems
+        self.level = level
         self.pos = pos
 
     def __str__(self):
@@ -206,27 +217,30 @@ class Action:
     def parse(action_str):
         action_type = action_str[0] # should be one of ACTIONS
         gems = None
+        level = None
         pos = None
 
         if action_type == Action.take: 
             gems = [g for g in action_str[1:]]
         elif action_type == Action.reserve: 
-            pos = Action.scan_pos(action_str) # (level, pos)
+            level, pos = Action.scan_level_pos(action_str)
         elif action_type == Action.purchase: 
-            pos = Action.scan_pos(action_str) 
+            level, pos = Action.scan_level_pos(action_str) 
         elif action_type == Action.purchase_hand: 
-            assert len(action_str) == 2
-            pos = (int(action_str[1]) - 1,) # single int -- position of hand card
+            pos = (int(action_str[1]) - 1,) # the 1-based index of a hand card
+        elif action_type == Action.new_table_card:
+            pos = (int(action_str[1:]) - 1,) # the 1-based index of a deck card
         else:
             raise AttributeError('Invalid action type {} (in action {})'.format(action_type, action_str))
         
-        return action_type, gems, pos
+        return action_type, gems, level, pos
 
     @staticmethod
-    def scan_pos(action_str):
-        assert len(action_str) == 3
-        level = int(action_str[1]) - 1
-        pos = int(action_str[2]) - 1
+    def scan_level_pos(action_str):
+        parts = action_str.split('n') # seperator between the card level and position
+        assert len(parts) == 2
+        level = int(parts[0]) - 1
+        pos = int(parts[1]) - 1
         return level, pos
 
 class SplendorGameRules:
@@ -249,13 +263,15 @@ class SplendorGameRules:
  
 class SplendorGameState(GameState):
     '''Knows game rules)'''
-    
-    def __init__(self, player_names, rules):
+
+    def __init__(self, player_names, rules: SplendorGameRules):
         assert rules.num_players == len(player_names)
 
         self.rules = rules
         self.num_moves = 0
         self.player_to_move = 0
+        self.table_card_needed = False # indicates that previous player just purchased a table card
+        self.deck_level = 0 # the level of the deck that will be used to select card if self.table_card_needed is True
 
         # init nobles
         self.nobles = random.sample(NOBLES, self.rules.max_nobles)
@@ -301,14 +317,7 @@ class SplendorGameState(GameState):
 
         return s 
 
-    def new_table_card(self, level, pos):
-        '''Put new card on table if player reserved/purchased card'''
-        new_card = None
-        if self.decks[level]:
-            new_card = self.decks[level].pop()
-        self.cards[level][pos] = new_card
-
-    def action(self, action):
+    def apply_action(self, action: Action):
         player = self.players[self.player_to_move]
 
         if action.type == Action.take: 
@@ -336,69 +345,151 @@ class SplendorGameState(GameState):
                 
                 player.gems.add(gem, 1)
                 self.gems.add(gem, -1)
+            
+            self._increment_player_to_move()
 
         elif action.type == Action.reserve: 
-            level, pos = action.pos
-            if level < 0 or level >= CARD_LEVELS:
-                raise AttributeError('Invalid deck level {}'.format(level + 1))
-            if pos < -1 or pos >= len(self.cards[level]):
-                raise AttributeError('Invalid card position {}'.format(pos + 1))
+            # level and pos indicate the position of the card to reserve on the table
+            if action.level < 0 or action.level >= CARD_LEVELS:
+                raise AttributeError('Invalid deck level {}'.format(action.level))
+            if action.pos < 0 or action.pos >= len(self.cards[action.level]):
+                raise AttributeError('Invalid card position {}'.format(action.pos))
             if len(player.hand_cards) >= self.rules.max_hand_cards:
                 raise AttributeError('Player can\'t reserve more than {} cards'.format(self.rules.max_hand_cards))
 
-            card = None
-            if pos >= 0:
-                card = self.cards[level][pos]
-                if card is None:
-                    raise AttributeError('Card already taken')
-                self.new_table_card(level, pos)
-            if pos == -1: # blind reserve from deck
-                if not self.decks[level]:
-                    raise AttributeError('Deck {} is empty'.format(level + 1))
-                card = self.decks[level].pop()
+            card = self.cards[action.level][action.pos]
+            self._set_table_card_needed(action.level)
+                
+            # TODO: There's no option to blindly reserve from the deck
+            # if action.pos == -1: # blind reserve from deck
+            #     if not self.decks[action.level]:
+            #         raise AttributeError('Deck {} is empty'.format(action.level))
+            #     card = self.decks[action.level].pop()
+
             player.hand_cards.append(card)
             if self.gems.get(GOLD_GEM) > 0:
                 player.gems.add(GOLD_GEM, 1)
                 self.gems.add(GOLD_GEM, -1)
 
-        elif action.type == Action.purchase: 
-            level, pos = action.pos 
-            if level < 0 or level >= CARD_LEVELS:
-                raise AttributeError('Invalid deck level {}'.format(level + 1))
-            if pos < 0 or pos >= self.rules.max_open_cards:
-                raise AttributeError('Invalid card position {}'.format(pos + 1))
+            self._increment_player_to_move()
 
-            card = self.cards[level][pos]
+        elif action.type == Action.purchase: 
+            # level and pos indicate the position of the card to purchase on the table
+            if action.level < 0 or action.level >= CARD_LEVELS:
+                raise AttributeError('Invalid deck level {}'.format(action.level))
+            if action.pos < 0 or action.pos >= self.rules.max_open_cards:
+                raise AttributeError('Invalid card position {}'.format(action.pos))
+
+            card = self.cards[action.level].pop(action.pos) # takes the card from the table
             if not player.purchase_card(card):
                 raise AttributeError('Player can\'t afford the card')
-            self.new_table_card(level, pos)
+            self._set_table_card_needed(action.level)
 
             player.get_noble(self.nobles) # try to get a noble
+            self._increment_player_to_move()
 
         elif action.type == Action.purchase_hand: 
-            pos, = action.pos # position of card in hand
-            if pos < 0 or pos >= len(player.hand_cards):
-                raise AttributeError('Invalid card position in hand {}'.format(pos + 1))
+            # pos is the position of the card in hand
+            if action.pos < 0 or action.pos >= len(player.hand_cards):
+                raise AttributeError('Invalid card position in hand {}'.format(action.pos))
 
-            card = player.hand_cards[pos]
+            card = player.hand_cards[action.pos]
             if not player.purchase_card(card):
-                raise AttributeError('Player can\'t afford card')
-            player.hand_card.pop(pos) # remove card from hand
+                raise AttributeError('Player can\'t afford the card')
+            player.hand_card.pop(action.pos) # remove card from hand
 
-            player.get_noble(self.nobles) # try to get noble
+            player.get_noble(self.nobles) # try to get a noble
+            self._increment_player_to_move()
+
+        elif action.type == Action.new_table_card:
+            # The game is in an intermediate state that requires to select a new random card from the deck.
+            # This (strange) state is reuired to allow "choice" game nodes of search algorithms to work correctly
+
+            if not self.table_card_needed:
+                raise AttributeError('Game does not require a new table card at the moment')
+            if action.level < 0 or action.level >= CARD_LEVELS:
+                raise AttributeError('Invalid deck level {}'.format(action.level))
+            if action.pos <= 0 or action.pos >= len(self.decks[action.level]):
+                raise AttributeError('Invalid card position {}'.format(action.pos))
+            
+            new_card = self.decks[action.level].pop(action.pos)
+            self.cards[action.level].append(new_card)
+            self.table_card_needed = False
+            # since this is not a player's action, we do not increment the active player's index
 
         else:
             raise AttributeError('Invalid action type {}'.format(action.type))
 
+    def _increment_player_to_move(self):
         self.player_to_move = (self.player_to_move + 1) % self.rules.num_players
         if self.player_to_move == 0: # round end
             self.num_moves += 1
 
-    def check_win(self):
+    def _set_table_card_needed(self, level):
+        if self.decks[level]: # if the deck is not empty
+            self.table_card_needed = True
+            self.deck_level = level
+
+    def get_actions(self):
+        if self.table_card_needed:
+            # move of the gods of randomness, no player is involved
+            action = Action.new_table_card
+            actions = [f'{action}{self.level}n{n}' for n in range(len(self.decks[self.deck_level]))]
+            return actions
+        
+        actions = []
+        player: SplendorPlayerState = self.players[self.player_to_move]
+
+        # 1. Take new gems
+        # 2 same gems
+        action = Action.take
+        if player.gem_count < self.rules.max_player_gems - self.rules.max_same_gems_take: 
+            for gem, count in self.gems.items():
+                if count >= self.rules.min_same_gems_stack:
+                    actions.append(f'{action}{gem}')
+
+        # 3 distinct gems
+        if player.gem_count < self.rules.max_player_gems - self.rules.max_gems_take:
+            available_gems = [g for g in GEMS[:-1] if self.gems.get(g) > 0]
+            for comb_gems in combinations(available_gems, self.rules.max_gems_take):
+                actions.append(f'{action}{"".join(comb_gems)}')
+
+        # 2. Reserve a card
+        if len(player.hand_cards) < self.rules.max_hand_cards:
+            action = Action.reserve
+            for level in range(CARD_LEVELS):
+                for pos in range(len(self.cards[level])):
+                    actions.append(f'{action}{level}n{pos}')
+
+        # 3. Purchase a card from table
+        action = Action.purchase
+        for level in range(CARD_LEVELS):
+            for pos, card in enumerate(self.cards[level]):
+                if player.can_afford_card(card):
+                    actions.append(f'{action}{level}n{pos}')
+
+        # 4. Purchase a card from the hand
+        if player.hand_cards:
+            action = Action.purchase_hand
+            for pos in range(len(player.hand_cards)):
+                actions.append(f'{action}{pos}')
+
+        return actions
+
+    def active_player(self):
+        if self.table_card_needed:
+            return None
+        return self.player_to_move
+
+    def is_terminal(self):
         for player in self.players:
             if player.points >= self.rules.win_points:
                 return True
         return False
+
+    def rewards(self):
+        '''Returns the number of win points for each player'''
+        return [player.score for player in self.players]
 
     def best_player(self):
         '''Returns name of best player'''
