@@ -1,11 +1,13 @@
-import random
-import csv
+import random, copy, csv
 from itertools import combinations
 
 from game import GameState
 
-GOLD_GEM = 'y'
-GEMS = ('r', 'g', 'b', 'w', 'k', GOLD_GEM) # red, green, blue, white, black, yellow(gold)
+GOLD_GEM = 5 # index of the gold gem
+NUM_GEMS = 6
+GEMS = tuple(range(NUM_GEMS))
+GEM_STR = ('r', 'g', 'b', 'w', 'k', 'y') # red, green, blue, white, black, yellow(gold)
+GEM_STR_TO_VAL = {val: idx for idx, val in enumerate(GEM_STR)}
 CARD_LEVELS = 3
 
 class ActionType:
@@ -15,55 +17,14 @@ class ActionType:
     purchase = 'p' # purchase table card
     purchase_hand = 'h' # purchase hand card
     new_table_card = 'c' # new table card from deck. Performed by randomness rather than any of the players
-   
-class GemSet:
-    '''Set of gems with count (or price) each'''
+
+class GemSet(list):
+    '''Count/price for each gem'''
     def __init__(self):
-        self.gems = {} # gem name (one of GEMS) : count
-
-    def add(self, gem, count):
-        new_count = self.gems.get(gem, 0) + count
-        assert new_count >= 0
-        self.gems[gem] = new_count
-
-    def get(self, gem):
-        return self.gems.get(gem, 0)
-
-    def __setitem__(self, gem, count):
-        assert count >= 0
-        self.gems[gem] = count
-
-    def __getitem__(self, gem):
-        return self.gems.get(gem, 0)
-    
-    def items(self):
-        return self.gems.items()
+        super().__init__([0] * 6)
 
     def __str__(self):
-        s = ''
-        for gem in GEMS: # preserve gem order
-            if gem in self.gems:
-                count = self.get(gem)
-                if count > 0:
-                    s += gem + str(count)
-        return s
-
-    def shortage(self, price):
-        '''Returns list of additional gems required. Gold is not taken into account.'''
-        shortage = GemSet()
-        for gem, count in price.items():
-            assert gem is not GOLD_GEM
-            diff = count - self.get(gem)
-            if diff > 0:
-                shortage.add(gem, diff)
-        return shortage
-
-    def count(self):
-        '''Total count of all gems in set''' 
-        total = 0
-        for _, count in self.items():
-            total += count
-        return total
+        return ''.join([GEM_STR[gem] + str(count) for gem, count in enumerate(self) if count > 0])
 
 class Noble:
     def __init__(self, points=0, price=None):
@@ -81,9 +42,9 @@ class Noble:
         assert num_gems >= 2 and num_gems <= 3
         price = GemSet()
         for n in range(num_gems):
-            gem = string[2*n + 3]
+            gem = GEM_STR_TO_VAL.get(string[2*n + 3])
             count = int(string[2*n + 4])
-            price.add(gem, count)
+            price[gem] += count
         return points, price
 
     @classmethod
@@ -96,7 +57,7 @@ class Noble:
         return '[' + str(self.points) + '|' + str(self.price) + ']'
 
 class Card:
-    def __init__(self, gem='', points=0, price=None):
+    def __init__(self, gem=None, points=0, price=None):
         self.gem = gem # title gem
         self.points = points # number of win points
         self.price = price 
@@ -104,7 +65,7 @@ class Card:
             self.price = GemSet()
 
     def __str__(self):
-        return '[' + self.gem + str(self.points) + '|' + str(self.price) + ']'
+        return '[' + GEM_STR[self.gem] + str(self.points) + '|' + str(self.price) + ']'
 
 def read_cards_from_csv(file_name):
     cards = [[], [], []]
@@ -114,11 +75,11 @@ def read_cards_from_csv(file_name):
         assert len(line) == 8
         card = Card()
         level = int(line[0]) - 1
-        card.gem = line[1]
+        card.gem = GEM_STR_TO_VAL.get(line[1])
         card.points = int(line[2])
         for gem, amount in zip(GEMS[:-1], line[3:]):
             if len(amount) == 1:
-                card.price.add(gem, int(amount))
+                card.price[gem] += int(amount)
         cards[level].append(card)
     return tuple([tuple(cards[n]) for n in range(CARD_LEVELS)])
 
@@ -129,25 +90,32 @@ CARDS = read_cards_from_csv('cards.csv')
 class SplendorPlayerState:
     def __init__(self, name):
         self.name = name
-        self.cards = GemSet()
-        self.gems = GemSet()
+        self.card_gems = GemSet() # gems of acquired cards
+        self.gems = GemSet() # gems on the table
         self.hand_cards = []
-        self.points = 0
+        self.points = 0 # winning points from all aquired cards
 
     def __str__(self):
         s = self.name + '|' + str(self.points) + '\n'
-        s += 'cards:' + str(self.cards) + '\n'
+        s += 'card gems:' + str(self.card_gems) + '\n'
         s += 'gems:' + str(self.gems) + '\n'
         s += 'hand:'
         for card in self.hand_cards:
             s += str(card)
         s += '\n'
         return s
+    
+    def copy(self):
+        cp = copy.copy(self) # shallow copy
+        cp.card_gems = copy.copy(self.card_gems) # deep copy
+        cp.gems = copy.copy(self.gems)
+        cp.hand_cards = list(self.hand_cards)
+        return cp
 
 class Action:
     def __init__(self, action_type: ActionType, gems: list[str] = None, level: int = None, pos:int = None):
         self.type: ActionType = action_type
-        self.gems: list[str] = gems # list of gem symbols 
+        self.gems: list[str] = gems # list of gem idx-s 
         self.level: int = level
         self.pos: int = pos
 
@@ -155,7 +123,7 @@ class Action:
         if self.type == ActionType.skip:
             return self.type
         if self.type == ActionType.take: 
-            return self.type + ''.join(self.gems)
+            return self.type + ''.join([GEM_STR[g] for g in self.gems])
         elif self.type == ActionType.reserve or self.type == ActionType.purchase or self.type == ActionType.new_table_card:
             return f'{self.type}{self.level}n{self.pos}'
         elif self.type == ActionType.purchase_hand:
@@ -250,14 +218,24 @@ class SplendorGameState(GameState):
         # init gems
         self.gems = GemSet()
         for gem in GEMS[:-1]:
-            self.gems.add(gem, self.rules.max_gems)
-        self.gems.add(GEMS[-1], self.rules.max_gold)
+            self.gems[gem] = self.rules.max_gems
+        self.gems[GOLD_GEM] = self.rules.max_gold
 
         # init players
         self.players = [SplendorPlayerState(name) for name in player_names]
 
+    def copy(self):
+        cp = copy.copy(self) # shallow copy
+        # we don't need to copy cards or rules, but we need to reinit the lists
+        cp.nobles = list(self.nobles)
+        cp.decks = [list(self.decks[level]) for level in range(CARD_LEVELS)]
+        cp.cards = [list(self.cards[level]) for level in range(CARD_LEVELS)]
+        cp.gems = copy.copy(self.gems)
+        cp.players = [player.copy() for player in self.players]
+        return cp
+
     def __str__(self):
-        s = 'round: ' + str(self.round) + ' player to move: ' + str(self.player_to_move) + '\n'
+        s = 'round: ' + str(self.round) + ' player to move: ' + str(self.active_player()) + '\n'
         
         s += 'nobles: '
         for noble in self.nobles:
@@ -293,13 +271,13 @@ class SplendorGameState(GameState):
             if len(gems) > self.rules.max_gems_take:
                 raise ValueError('Can\'t take more than {} gems'.format(self.rules.max_gems_take))
             if len(unique_gems) == 1: # all same color
-                if self.gems.get(unique_gems[0]) < self.rules.min_same_gems_stack:
+                if self.gems[unique_gems[0]] < self.rules.min_same_gems_stack:
                     raise ValueError('Should be at least {} gems in stack'.format(self.rules.min_same_gems_stack))
                 if len(gems) != 1 and len(gems) > self.rules.max_same_gems_take: 
                     raise ValueError('Can\'t take more than {} identical gems'.format(self.rules.max_same_gems_take))
             if len(unique_gems) > 1 and len(unique_gems) != len(gems): 
                 raise ValueError('You can either take all identical or all different gems')
-            if player.gems.count() + len(gems) > self.rules.max_player_gems:
+            if sum(player.gems) + len(gems) > self.rules.max_player_gems:
                 raise ValueError('Player can\'t have more than {} gems'.format(self.rules.max_player_gems))
 
             for gem in gems:
@@ -307,11 +285,11 @@ class SplendorGameState(GameState):
                     raise ValueError('Invalid gem {}'.format(gem))
                 if gem == GOLD_GEM:
                     raise ValueError('You are not allowed to take gold ({}) gem'.format(GOLD_GEM))
-                if self.gems.get(gem) == 0:
+                if self.gems[gem] == 0:
                     raise ValueError('Not inough {} gems on table'.format(gem))
                 
-                player.gems.add(gem, 1)
-                self.gems.add(gem, -1)
+                player.gems[gem] += 1
+                self.gems[gem] -= 1
             
             self._increment_player_to_move()
 
@@ -334,9 +312,9 @@ class SplendorGameState(GameState):
             #     card = self.decks[action.level].pop()
 
             player.hand_cards.append(card)
-            if self.gems.get(GOLD_GEM) > 0:
-                player.gems.add(GOLD_GEM, 1)
-                self.gems.add(GOLD_GEM, -1)
+            if self.gems[GOLD_GEM] > 0:
+                player.gems[GOLD_GEM] += 1
+                self.gems[GOLD_GEM] -= 1
 
             self._increment_player_to_move()
 
@@ -396,23 +374,23 @@ class SplendorGameState(GameState):
         '''Checks if the player can afford the given card'''
 
         gold_to_pay = 0
-        for gem, price in card.price.items():
-            gem_to_pay = max(price - player.cards.get(gem), 0)
+        for gem, price in enumerate(card.price):
+            gem_to_pay = max(price - player.card_gems[gem], 0)
             if gem_to_pay > 0:
-                gem_available = player.gems.get(gem)
+                gem_available = player.gems[gem]
                 if gem_to_pay > gem_available:
                     gold_to_pay += gem_to_pay - gem_available
 
-        return gold_to_pay <= player.gems.get(GOLD_GEM)
+        return gold_to_pay <= player.gems[GOLD_GEM]
 
     def _purchase_card(self, player: SplendorPlayerState, card: Card):
         '''Performes the card purchase. Throws exception if the player can\'t afford the card'''
 
         gold_to_pay = 0
-        for gem, price in card.price.items():
-            gem_to_pay = max(price - player.cards.get(gem), 0)
+        for gem, price in enumerate(card.price):
+            gem_to_pay = max(price - player.card_gems[gem], 0)
             if gem_to_pay > 0:
-                gem_available = player.gems.get(gem)
+                gem_available = player.gems[gem]
                 if gem_to_pay > gem_available:
                     gold_to_pay += gem_to_pay - gem_available
                     self.gems[gem] += gem_available
@@ -422,12 +400,12 @@ class SplendorGameState(GameState):
                     player.gems[gem] = gem_available - gem_to_pay
 
         if gold_to_pay > 0:
-            if gold_to_pay > player.gems.get(GOLD_GEM):
+            if gold_to_pay > player.gems[GOLD_GEM]:
                 raise ValueError('Player can\'t afford the card')
             player.gems[GOLD_GEM] -= gold_to_pay
             self.gems[GOLD_GEM] += gold_to_pay
 
-        player.cards.add(card.gem, 1)
+        player.card_gems[card.gem] += 1
         player.points += card.points
 
     def _get_noble(self, player: SplendorPlayerState):
@@ -436,8 +414,8 @@ class SplendorGameState(GameState):
         noble_list = []
         for n, noble in enumerate(self.nobles):
             can_afford = True
-            for gem, price in noble.price.items():
-                if player.cards.get(gem) < price:
+            for gem, price in enumerate(noble.price):
+                if player.card_gems[gem] < price:
                     can_afford = False
                     break
             if can_afford:
@@ -468,14 +446,14 @@ class SplendorGameState(GameState):
         # 1. Take new gems
         # two same gems
         action_type = ActionType.take
-        if player.gems.count() < self.rules.max_player_gems - self.rules.max_same_gems_take: 
+        if sum(player.gems) < self.rules.max_player_gems - self.rules.max_same_gems_take: 
             for gem in GEMS[:-1]:
-                if self.gems.get(gem) >= self.rules.min_same_gems_stack:
+                if self.gems[gem] >= self.rules.min_same_gems_stack:
                     actions.append(Action(action_type, [gem] * self.rules.max_same_gems_take))
                     
         # three distinct gems
-        if player.gems.count() < self.rules.max_player_gems - self.rules.max_gems_take:
-            available_gems = [g for g in GEMS[:-1] if self.gems.get(g) > 0]
+        if sum(player.gems) < self.rules.max_player_gems - self.rules.max_gems_take:
+            available_gems = [g for g in GEMS[:-1] if self.gems[g] > 0]
             for comb_gems in combinations(available_gems, self.rules.max_gems_take):
                 actions.append(Action(action_type, comb_gems))
 

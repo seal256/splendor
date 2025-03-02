@@ -1,5 +1,5 @@
 from splendor_game import SplendorGameState, SplendorGameRules, Action
-from agents import Agent, HumanPlayer, CultivatorPlayer, RandomAgent, MCTSAgent
+from agents import Agent, HumanPlayer, RandomAgent, MCTSAgent
 from game import GameState
 
 def game_round(game_state: GameState, agents: list[Agent]):
@@ -22,7 +22,7 @@ def game_round(game_state: GameState, agents: list[Agent]):
 
 def one_round():
     game_state = SplendorGameState(['a', 'b'], SplendorGameRules(2))
-    agent = MCTSAgent()
+    agent = MCTSAgent(iterations=500)
     agent.get_action(game_state)
 
 def profile():
@@ -31,9 +31,9 @@ def profile():
 
 
 if __name__ == '__main__':
-    # agents = [RandomAgent(), MCTSAgent(iterations=500)]
-    # names = [f'player{n}' for n in range(len(agents))]
-    # game_state = SplendorGameState(names, SplendorGameRules(len(agents)))
-    # game_round(game_state, agents)
+    agents = [RandomAgent(), MCTSAgent(iterations=500)]
+    names = [f'player{n}' for n in range(len(agents))]
+    game_state = SplendorGameState(names, SplendorGameRules(len(agents)))
+    game_round(game_state, agents)
 
-    profile()
+    # profile()

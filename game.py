@@ -33,6 +33,11 @@ class GameState(ABC):
         '''Returns a list of rewards for each player'''
         pass
 
+    @abstractmethod
+    def copy(self):
+        '''Copy of the state, that allows independent game continuation from the new object'''
+        pass
+
 class Agent(ABC):
     '''Game palyer'''
 

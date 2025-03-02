@@ -1,5 +1,6 @@
 import random
 from tqdm import tqdm
+from copy import deepcopy
 
 from mcts import MCTS, GameState
 
@@ -38,7 +39,10 @@ class TicTacToe(GameState):
         else:
             rewards = [0.5, 0.5]
         return rewards
-
+    
+    def copy(self):
+        return deepcopy(self)
+    
     def display(self):
         symbols = {None: '.', 0: 'X', 1: 'O'}
         for i in range(0, 9, 3):

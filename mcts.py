@@ -1,4 +1,3 @@
-from copy import deepcopy
 import math
 import random
 from tqdm import tqdm
@@ -16,7 +15,7 @@ class Node:
 
 class MCTS:
     def __init__(self, state: GameState, iterations=1000, exploration = 1.4):
-        self.root = Node(deepcopy(state))
+        self.root = Node(state.copy())
         self.iterations = iterations
         self.exploration = exploration
 
@@ -54,7 +53,7 @@ class MCTS:
 
     def _rollout(self, state: GameState):
         # Simulates a random playout from the given state
-        state = deepcopy(state)
+        state = state.copy()
         while not state.is_terminal():
             actions = state.get_actions()
             action = random.choice(actions)
