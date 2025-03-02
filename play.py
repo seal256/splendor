@@ -18,10 +18,22 @@ def game_round(game_state: GameState, agents: list[Agent]):
 
     print('Final scores:')
     for n, score in enumerate(game_state.rewards()):
-        print(f'player {n}: score: {score}')
+        print(f'player {n} score: {score}')
+
+def one_round():
+    game_state = SplendorGameState(['a', 'b'], SplendorGameRules(2))
+    agent = MCTSAgent()
+    agent.get_action(game_state)
+
+def profile():
+    import cProfile
+    cProfile.run('one_round()')
+
 
 if __name__ == '__main__':
-    agents = [RandomAgent(), MCTSAgent()]
-    names = [f'player{n}' for n in range(len(agents))]
-    game_state = SplendorGameState(names, SplendorGameRules(len(agents)))
-    game_round(game_state, agents)
+    # agents = [RandomAgent(), MCTSAgent(iterations=500)]
+    # names = [f'player{n}' for n in range(len(agents))]
+    # game_state = SplendorGameState(names, SplendorGameRules(len(agents)))
+    # game_round(game_state, agents)
+
+    profile()

@@ -33,6 +33,9 @@ class GemSet:
         assert count >= 0
         self.gems[gem] = count
 
+    def __getitem__(self, gem):
+        return self.gems.get(gem, 0)
+    
     def items(self):
         return self.gems.items()
 
@@ -130,7 +133,6 @@ class SplendorPlayerState:
         self.gems = GemSet()
         self.hand_cards = []
         self.points = 0
-        self.gem_count = 0
 
     def __str__(self):
         s = self.name + '|' + str(self.points) + '\n'
@@ -142,57 +144,6 @@ class SplendorPlayerState:
         s += '\n'
         return s
 
-    def can_afford_card(self, card):
-        '''Checks if the player can afford the given card'''
-
-        shortage = self.gems.shortage(card.price)
-        gold = self.gems.get(GOLD_GEM) # gold available 
-        gold_to_pay = shortage.count()
-        return gold >= gold_to_pay
-    
-    def purchase_card(self, card):
-        '''Performes the card purchase. Returns false if player can\'t afford the card'''
-
-        shortage = self.gems.shortage(card.price)
-        gold = self.gems.get(GOLD_GEM) # gold available 
-        gold_to_pay = shortage.count()
-        if gold < gold_to_pay:
-            return False
-
-        # if player can afford the card, perform the payment
-        if gold_to_pay > 0:
-            self.gems.add(GOLD_GEM, -gold_to_pay)
-        for gem, price in card.price.items():
-            if gem in shortage.gems: # have to pay by gold => new gem count is zero
-                self.gems[gem] = 0
-            else:
-                self.gems.add(gem, -price)
-        self.gem_count -= card.price.count()
-
-        self.cards.add(card.gem, 1)
-        self.points += card.points
-        return True
-
-    def _get_noble(self, nobles):
-        '''Attempts to acquire a noble card'''
-        
-        noble_list = []
-        for n, noble in enumerate(nobles):
-            can_afford = True
-            for gem, price in noble.price.items():
-                if self.cards.get(gem) < price:
-                    can_afford = False
-                    break
-            if can_afford:
-                noble_list.append(n)
-                break 
-                # potentially more than one noble may be available for aquisition, 
-                # but we ignore this possiblilty for simplicity
-        
-        if noble_list:
-            noble = nobles.pop(noble_list[0])
-            self.points += noble.points
-
 class Action:
     def __init__(self, action_type: ActionType, gems: list[str] = None, level: int = None, pos:int = None):
         self.type: ActionType = action_type
@@ -201,12 +152,14 @@ class Action:
         self.pos: int = pos
 
     def __str__(self):
+        if self.type == ActionType.skip:
+            return self.type
         if self.type == ActionType.take: 
             return self.type + ''.join(self.gems)
         elif self.type == ActionType.reserve or self.type == ActionType.purchase or self.type == ActionType.new_table_card:
             return f'{self.type}{self.level}n{self.pos}'
         elif self.type == ActionType.purchase_hand:
-            return f'{self.type}{self.level}'
+            return f'{self.type}{self.pos}'
         else:
             raise ValueError('Unknown action type')
 
@@ -225,7 +178,9 @@ class Action:
         level = None
         pos = None
 
-        if action_type == ActionType.take: 
+        if action_type == ActionType.skip:
+            pass
+        elif action_type == ActionType.take: 
             gems = [g for g in action_str[1:]]
         elif action_type == ActionType.reserve: 
             level, pos = Action.scan_level_pos(action_str)
@@ -344,7 +299,7 @@ class SplendorGameState(GameState):
                     raise ValueError('Can\'t take more than {} identical gems'.format(self.rules.max_same_gems_take))
             if len(unique_gems) > 1 and len(unique_gems) != len(gems): 
                 raise ValueError('You can either take all identical or all different gems')
-            if player.gem_count + len(gems) > self.rules.max_player_gems:
+            if player.gems.count() + len(gems) > self.rules.max_player_gems:
                 raise ValueError('Player can\'t have more than {} gems'.format(self.rules.max_player_gems))
 
             for gem in gems:
@@ -393,11 +348,9 @@ class SplendorGameState(GameState):
                 raise ValueError('Invalid card position {}'.format(action.pos))
 
             card = self.cards[action.level].pop(action.pos) # takes the card from the table
-            if not player.purchase_card(card):
-                raise ValueError('Player can\'t afford the card')
+            self._purchase_card(player, card)
             self._set_table_card_needed(action.level)
-
-            player._get_noble(self.nobles) # try to get a noble
+            self._get_noble(player) # try to get a noble
             self._increment_player_to_move()
 
         elif action.type == ActionType.purchase_hand: 
@@ -406,10 +359,8 @@ class SplendorGameState(GameState):
                 raise ValueError('Invalid card position in hand {}'.format(action.pos))
 
             card = player.hand_cards.pop(action.pos) # remove card from hand
-            if not player.purchase_card(card):
-                raise ValueError('Player can\'t afford the card')
-
-            player._get_noble(self.nobles) # try to get a noble
+            self._purchase_card(player, card)
+            self._get_noble(player) # try to get a noble
             self._increment_player_to_move()
 
         elif action.type == ActionType.new_table_card:
@@ -436,10 +387,68 @@ class SplendorGameState(GameState):
         if self.player_to_move == 0: # round end
             self.round += 1
 
-    def _set_table_card_needed(self, level):
+    def _set_table_card_needed(self, level: int):
         if self.decks[level]: # if the deck is not empty
             self.table_card_needed = True
             self.deck_level = level
+
+    def _player_can_afford_card(self, player: SplendorPlayerState, card: Card) -> bool:
+        '''Checks if the player can afford the given card'''
+
+        gold_to_pay = 0
+        for gem, price in card.price.items():
+            gem_to_pay = max(price - player.cards.get(gem), 0)
+            if gem_to_pay > 0:
+                gem_available = player.gems.get(gem)
+                if gem_to_pay > gem_available:
+                    gold_to_pay += gem_to_pay - gem_available
+
+        return gold_to_pay <= player.gems.get(GOLD_GEM)
+
+    def _purchase_card(self, player: SplendorPlayerState, card: Card):
+        '''Performes the card purchase. Throws exception if the player can\'t afford the card'''
+
+        gold_to_pay = 0
+        for gem, price in card.price.items():
+            gem_to_pay = max(price - player.cards.get(gem), 0)
+            if gem_to_pay > 0:
+                gem_available = player.gems.get(gem)
+                if gem_to_pay > gem_available:
+                    gold_to_pay += gem_to_pay - gem_available
+                    self.gems[gem] += gem_available
+                    player.gems[gem] = 0
+                else:
+                    self.gems[gem] += gem_to_pay
+                    player.gems[gem] = gem_available - gem_to_pay
+
+        if gold_to_pay > 0:
+            if gold_to_pay > player.gems.get(GOLD_GEM):
+                raise ValueError('Player can\'t afford the card')
+            player.gems[GOLD_GEM] -= gold_to_pay
+            self.gems[GOLD_GEM] += gold_to_pay
+
+        player.cards.add(card.gem, 1)
+        player.points += card.points
+
+    def _get_noble(self, player: SplendorPlayerState):
+        '''Attempts to acquire a noble card'''
+        
+        noble_list = []
+        for n, noble in enumerate(self.nobles):
+            can_afford = True
+            for gem, price in noble.price.items():
+                if player.cards.get(gem) < price:
+                    can_afford = False
+                    break
+            if can_afford:
+                noble_list.append(n)
+                break 
+                # potentially more than one noble may be available for aquisition, 
+                # but we ignore this possiblilty for simplicity
+        
+        if noble_list:
+            noble = self.nobles.pop(noble_list[0])
+            player.points += noble.points
 
     def get_actions(self) -> list[Action]:
         if self.table_card_needed:
@@ -459,13 +468,13 @@ class SplendorGameState(GameState):
         # 1. Take new gems
         # two same gems
         action_type = ActionType.take
-        if player.gem_count < self.rules.max_player_gems - self.rules.max_same_gems_take: 
+        if player.gems.count() < self.rules.max_player_gems - self.rules.max_same_gems_take: 
             for gem in GEMS[:-1]:
                 if self.gems.get(gem) >= self.rules.min_same_gems_stack:
                     actions.append(Action(action_type, [gem] * self.rules.max_same_gems_take))
                     
         # three distinct gems
-        if player.gem_count < self.rules.max_player_gems - self.rules.max_gems_take:
+        if player.gems.count() < self.rules.max_player_gems - self.rules.max_gems_take:
             available_gems = [g for g in GEMS[:-1] if self.gems.get(g) > 0]
             for comb_gems in combinations(available_gems, self.rules.max_gems_take):
                 actions.append(Action(action_type, comb_gems))
@@ -482,14 +491,14 @@ class SplendorGameState(GameState):
         action_type = ActionType.purchase
         for level in range(CARD_LEVELS):
             for pos, card in enumerate(self.cards[level]):
-                if player.can_afford_card(card):
+                if self._player_can_afford_card(player, card):
                     actions.append(Action(action_type, level=level, pos=pos))
 
         # 4. Purchase a card from the hand
         if player.hand_cards:
             action_type = ActionType.purchase_hand
             for pos, card in enumerate(player.hand_cards):
-                if player.can_afford_card(card):
+                if self._player_can_afford_card(player, card):
                     actions.append(Action(action_type, pos=pos))
 
         return actions

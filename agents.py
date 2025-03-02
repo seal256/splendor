@@ -16,7 +16,7 @@ class HumanPlayer(Agent):
         return Action.from_str(action_str)
 
 class MCTSAgent(Agent):
-    def __init__(self, mcts_params={}):
+    def __init__(self, **mcts_params):
         self.mcts_params = mcts_params
 
     def get_action(self, game_state: GameState):
