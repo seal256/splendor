@@ -13,6 +13,12 @@ class Node:
         self.visits = 0
         self.wins = 0 # wins for the player who's turn it is at the current state
 
+    def get_state(self) -> GameState:
+        '''Lazy state calculation'''
+        if self.state is None:
+            self.state = self.parent.state.next_state(self.action) 
+        return self.state
+
 class MCTS:
     def __init__(self, state: GameState, iterations=1000, exploration = 1.4):
         self.root = Node(state.copy())
@@ -32,21 +38,22 @@ class MCTS:
             node = self._select_child(node)
 
         # Expansion
-        if not node.state.is_terminal():
-            for action in node.state.get_actions():
-                next_state = node.state.next_state(action)
-                child_node = Node(state=next_state, action=action, parent=node)
+        if not node.get_state().is_terminal():
+            for action in node.get_state().get_actions():
+                # state copying becomes expensive with a lot of node expansions
+                # we will calculate the child state when it's needed
+                child_node = Node(state=None, action=action, parent=node)
                 node.children.append(child_node)
             node = random.choice(node.children)
 
         # Simulation
-        rewards = self._rollout(node.state)
+        rewards = self._rollout(node.get_state())
 
         # Backpropagation
         while node is not None:
             node.visits += 1
             if node.parent:
-                active_player = node.parent.state.active_player() # active_player may be None if we are at a chance node
+                active_player = node.parent.get_state().active_player() # active_player may be None if we are at a chance node
                 if active_player is not None: 
                     node.wins += rewards[active_player]
             node = node.parent
@@ -75,7 +82,7 @@ class MCTS:
             self.root.parent = None
 
         else: # unexplored action
-            self.root = Node(self.root.state.next_state(action))
+            self.root = Node(self.root.get_state().next_state(action))
 
     def _select_child(self, node):
         '''Uses UCB-like criterion to select best node for rollout'''
