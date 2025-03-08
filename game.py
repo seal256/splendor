@@ -14,14 +14,8 @@ class GameState(ABC):
 
     @abstractmethod
     def apply_action(self, action):
-        '''Applies the action to the game state, modifying it'''
+        '''Applies the action to thae game state, modifying it'''
         pass
-
-    def next_state(self, action):
-        '''Returns next state keeping this object intact'''
-        state = deepcopy(self)
-        state.apply_action(action)
-        return state
 
     @abstractmethod
     def is_terminal(self) -> bool:
@@ -29,7 +23,7 @@ class GameState(ABC):
         pass
 
     @abstractmethod
-    def rewards(self) -> list[int]:
+    def rewards(self) -> list[float]:
         '''Returns a list of rewards for each player'''
         pass
 
@@ -39,7 +33,7 @@ class GameState(ABC):
         pass
 
 class Agent(ABC):
-    '''Game palyer'''
+    '''Game player'''
 
     @abstractmethod
     def get_action(game_state: GameState):

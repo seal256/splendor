@@ -500,7 +500,8 @@ class SplendorGameState(GameState):
 
     def rewards(self):
         '''Returns the number of win points for each player'''
-        return [player.points for player in self.players]
+        # return [player.points for player in self.players]
+        return [1.0 if player.points >= self.rules.win_points else 0.0 for player in self.players]
 
     def best_player(self):
         '''Returns name of best player'''

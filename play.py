@@ -31,7 +31,7 @@ def profile():
 
 
 if __name__ == '__main__':
-    agents = [RandomAgent(), MCTSAgent(iterations=1000)]
+    agents = [RandomAgent(), MCTSAgent(iterations=5000)]
     names = [f'player{n}' for n in range(len(agents))]
     game_state = SplendorGameState(names, SplendorGameRules(len(agents)))
     game_round(game_state, agents)
