@@ -80,7 +80,8 @@ class MCTS:
     def apply_action(self, action):
         '''Applies an actual game action and rebases the tree root. 
         
-        Maintains a relevant part of the tree for next searches. Be careful to keep the same active player before making new searches.'''
+        Maintains a relevant part of the tree for next searches.'''
+        self.root_state = self.root_state.apply_action(action)
 
         next_node = next((child for child in self.root.children if action == child.action), None)
         if next_node:
@@ -88,7 +89,6 @@ class MCTS:
             self.root.parent = None
 
         else: # unexplored action
-            self.root_state = self.root_state.apply_action(action)
             self.root = Node(active_player=self.root_state.active_player())
 
     def _select_child(self, node):

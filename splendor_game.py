@@ -87,6 +87,11 @@ NOBLES = tuple(map(Noble.from_str, ['[3|r4g4]', '[3|g4b4]', '[3|b4w4]', '[3|w4k4
     '[3|r3g3b3]', '[3|b3g3w3]', '[3|b3w3k3]', '[3|w3k3r3]', '[3|k3r3g3]']))
 CARDS = read_cards_from_csv('cards.csv')
 
+def print_cards():
+    for level, deck in enumerate(CARDS):
+        print(f'level {level}')
+        print(','.join([f'"{card}"' for card in deck]))
+    
 class SplendorPlayerState:
     def __init__(self, name):
         self.name = name
@@ -167,8 +172,8 @@ class Action:
     def scan_level_pos(action_str):
         parts = action_str.split('n') # seperator between the card level and position
         assert len(parts) == 2
-        level = int(parts[0]) - 1
-        pos = int(parts[1]) - 1
+        level = int(parts[0])
+        pos = int(parts[1])
         return level, pos
 
 class SplendorGameRules:
@@ -198,7 +203,7 @@ class SplendorGameState(GameState):
         self.rules = rules
         self.round = 0
         self.player_to_move = 0
-        self.skips = 0 # number of playsers that skipped move in this round. If all players skipped, the game ends prematurely
+        self.skips = 0 # number of players that skipped move in this round. If all players skipped, the game ends
         self.table_card_needed = False # indicates that previous player just purchased a table card
         self.deck_level = 0 # the level of the deck that will be used to select card if self.table_card_needed is True
 
@@ -508,7 +513,8 @@ class SplendorGameState(GameState):
         scores = [(player.points, player.name) for player in self.players]
         return sorted(scores, reverse=True)[0]
 
-
+if __name__ == '__main__':
+    print_cards()
 
         
 
