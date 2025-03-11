@@ -9,7 +9,7 @@ using splendor::SplendorGameState;
 
 int main() {
     auto mcts_params = mcts::MCTSParams();
-    mcts_params.iterations = 10000;
+    mcts_params.iterations = 100000;
     auto mcts_agent = std::make_shared<mcts::MCTSAgent<Action>>(mcts_params);
     auto random_agent = std::make_shared<RandomAgent<Action>>();
     std::vector<std::shared_ptr<Agent<Action>>> agents = {random_agent, mcts_agent};

@@ -120,8 +120,8 @@ std::ostream& operator<<(std::ostream& os, const SplendorPlayerState& player) {
        << "card gems: " << player.card_gems << "\n"
        << "gems: " << player.gems << "\n"
        << "hand: ";
-    for (const auto& card : player.hand_cards) {
-        os << card << " ";
+    for (const Card* card : player.hand_cards) {
+        os << *card << " ";
     }
     os << "\n";
     return os;
