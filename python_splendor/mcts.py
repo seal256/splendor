@@ -42,12 +42,12 @@ class MCTS:
         # Selection
         node: Node = self.root
         state = self.root_state.copy()
-        while node.children:
+        while node.children and node.visits > 0:
             node = self._select_child(node)
             state.apply_action(node.action)
 
         # Expansion
-        if not state.is_terminal():
+        if not state.is_terminal() and not node.children and node.visits > 0:
             for action in state.get_actions(): # TODO: if the number of actions is big, but their computation is cheap, it makes sense to recompute the list each time we visit the node for expansion
                 child_node = Node(action=action, active_player=state.active_player(), parent=node)
                 node.children.append(child_node)
