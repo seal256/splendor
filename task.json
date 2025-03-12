@@ -1,0 +1,16 @@
+{
+    "agents": [
+        {
+            "type": "MCTSAgent",
+            "iterations": 1000,
+            "exploration": 1.4
+        },
+        {
+            "type": "MCTSAgent",
+            "iterations": 10000,
+            "exploration": 1.4
+        }
+    ],
+    "num_games": 20,
+    "verbose": false
+}

@@ -44,6 +44,24 @@
         "variant": "cpp",
         "algorithm": "cpp",
         "vector": "cpp",
-        "array": "cpp"
+        "array": "cpp",
+        "any": "cpp",
+        "forward_list": "cpp",
+        "iomanip": "cpp",
+        "map": "cpp",
+        "optional": "cpp",
+        "valarray": "cpp",
+        "__hash_table": "cpp",
+        "__node_handle": "cpp",
+        "__split_buffer": "cpp",
+        "charconv": "cpp",
+        "deque": "cpp",
+        "memory": "cpp",
+        "print": "cpp",
+        "queue": "cpp",
+        "stack": "cpp",
+        "__tree": "cpp",
+        "fstream": "cpp",
+        "span": "cpp"
     }
 }

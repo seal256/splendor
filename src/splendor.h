@@ -5,7 +5,7 @@
 #include <unordered_map>
 #include <string>
 
-#include "game.h"
+#include "game_state.h"
 
 namespace splendor {
    

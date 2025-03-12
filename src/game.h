@@ -3,35 +3,10 @@
 #include<vector>
 #include <iostream>
 #include <memory>
+#include <cmath>
+#include <numeric>
 
-template<typename ActionT> 
-class GameState {
-public:
-    virtual ~GameState() {};
-
-    virtual std::vector<ActionT> get_actions() const = 0;
-    virtual int active_player() const = 0;
-    virtual void apply_action(const ActionT& action) = 0;
-    virtual bool is_terminal() const = 0;
-    virtual std::vector<double> rewards() const = 0;
-    virtual std::shared_ptr<GameState<ActionT>> clone() const = 0;
-    virtual void print(std::ostream& os) const = 0;
-};
-
-template<typename ActionT> 
-std::ostream& operator<<(std::ostream& os, const GameState<ActionT>& state) {
-    state.print(os);
-    return os;
-}
-
-const int CHANCE_PLAYER = -1; // Should be returned from GameState::active_player() for chance nodes
-
-template<typename ActionT>
-class Agent {
-public:
-    virtual ~Agent() {};
-    virtual ActionT get_action(const std::shared_ptr<GameState<ActionT>>& game_state) const = 0;
-};
+#include "agents.h"
 
 template<typename ActionT>
 struct Trajectory {
@@ -41,7 +16,7 @@ struct Trajectory {
 };
 
 template<typename ActionT>
-Trajectory<ActionT> game_round(std::shared_ptr<GameState<ActionT>> game_state, const std::vector<std::shared_ptr<Agent<ActionT>>>& agents, bool verbose=false) {
+Trajectory<ActionT> run_one_game(std::shared_ptr<GameState<ActionT>> game_state, const std::vector<std::shared_ptr<Agent<ActionT>>>& agents, bool verbose=false) {
     Trajectory<ActionT> trajectory;
     trajectory.initial_state = game_state->clone();
 
@@ -79,4 +54,46 @@ Trajectory<ActionT> game_round(std::shared_ptr<GameState<ActionT>> game_state, c
     }
 
     return trajectory;
+}
+
+template<typename ActionT>
+class GameSeriesTask {
+public:
+    std::vector<std::shared_ptr<Agent<ActionT>>> agents;
+    int num_games;
+    bool verbose;
+
+    GameSeriesTask(const json& jsn) {
+        if (!jsn.contains("agents") || !jsn.contains("num_games")) {
+            throw std::runtime_error("JSON must contain 'agents' and 'num_games' fields.");
+        }
+
+        num_games = jsn["num_games"];
+        verbose = jsn.value("verbose", false);
+        for (const auto& player_config : jsn["agents"]) {
+            agents.push_back(construct_agent<ActionT>(player_config));
+        }
+    }
+};
+
+template<typename GameStateT, typename ActionT>
+std::vector<Trajectory<ActionT>> run_games(const GameSeriesTask<ActionT>& task) {
+    std::vector<Trajectory<ActionT>> trajectories;
+
+    for (int game_num = 0; game_num < task.num_games; ++game_num) {
+        auto start = std::chrono::high_resolution_clock::now();
+
+        auto game_state = std::make_shared<GameStateT>(task.agents.size());
+        Trajectory<ActionT> trajectory = run_one_game<ActionT>(game_state, task.agents, task.verbose);
+        trajectories.push_back(trajectory);
+
+        auto end = std::chrono::high_resolution_clock::now();
+        auto duration = static_cast<double>((std::chrono::duration_cast<std::chrono::milliseconds>(end - start)).count()) / 1000.0;
+        std::cout << "Game " << game_num << " of " << task.num_games 
+            << " took: " << duration << " sec " 
+            << " moves: " << trajectory.actions.size()
+            << "\n";
+    }
+
+    return trajectories;
 }

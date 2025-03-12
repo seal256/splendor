@@ -2,7 +2,7 @@ from splendor_game import SplendorGameState, SplendorGameRules, Action
 from agents import Agent, HumanPlayer, RandomAgent, MCTSAgent
 from game import GameState
 
-def game_round(game_state: GameState, agents: list[Agent]):
+def run_one_game(game_state: GameState, agents: list[Agent]):
     active_player = game_state.active_player()
     while not game_state.is_terminal():
         if active_player is None: # chance game state
@@ -34,7 +34,7 @@ if __name__ == '__main__':
     agents = [RandomAgent(), MCTSAgent(iterations=5000)]
     names = [f'player{n}' for n in range(len(agents))]
     game_state = SplendorGameState(names, SplendorGameRules(len(agents)))
-    game_round(game_state, agents)
+    run_one_game(game_state, agents)
 
     # one_round()
     # profile()
