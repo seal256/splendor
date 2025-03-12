@@ -34,7 +34,17 @@ public:
 };
 
 template<typename ActionT>
-void game_round(std::shared_ptr<GameState<ActionT>> game_state, const std::vector<std::shared_ptr<Agent<ActionT>>>& agents) {
+struct Trajectory {
+    std::shared_ptr<GameState<ActionT>> initial_state;
+    std::vector<ActionT> actions;
+    std::vector<double> rewards; // obtained at the end of the game
+};
+
+template<typename ActionT>
+Trajectory<ActionT> game_round(std::shared_ptr<GameState<ActionT>> game_state, const std::vector<std::shared_ptr<Agent<ActionT>>>& agents, bool verbose=false) {
+    Trajectory<ActionT> trajectory;
+    trajectory.initial_state = game_state->clone();
+
     int active_player = game_state->active_player();
     while (!game_state->is_terminal()) {
         ActionT action;
@@ -47,17 +57,26 @@ void game_round(std::shared_ptr<GameState<ActionT>> game_state, const std::vecto
             action = agents[active_player]->get_action(game_state);
         }
 
-        std::cout << "\n" << *game_state << "\n";
-        std::cout << "selected action: " << action << "\n";
+        if (verbose) {
+            std::cout << "\n" << *game_state << "\n";
+            std::cout << "selected action: " << action << "\n";
+        }
 
+        trajectory.actions.push_back(action);
         game_state->apply_action(action);
         active_player = game_state->active_player();
     }
 
-    std::cout << *game_state << "\n";
-    std::cout << "Final scores:" << "\n";
     auto rewards = game_state->rewards();
-    for (size_t n = 0; n < rewards.size(); ++n) {
-        std::cout << "player " << n << " score: " << rewards[n] << "\n";
+    trajectory.rewards = rewards;
+
+    if (verbose) {
+        std::cout << *game_state << "\n";
+        std::cout << "Final scores:" << "\n";
+        for (size_t n = 0; n < rewards.size(); ++n) {
+            std::cout << "player " << n << " score: " << rewards[n] << "\n";
+        }
     }
+
+    return trajectory;
 }

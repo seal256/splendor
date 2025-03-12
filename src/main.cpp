@@ -15,7 +15,7 @@ int main() {
     std::vector<std::shared_ptr<Agent<Action>>> agents = {random_agent, mcts_agent};
 
     auto game_state = std::make_shared<SplendorGameState>(agents.size());
-    game_round<Action>(game_state, agents);
+    Trajectory<Action> trajectory = game_round<Action>(game_state, agents);
     
     std::cout << "done!\n";
     return 0;
