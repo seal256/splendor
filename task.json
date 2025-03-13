@@ -7,10 +7,11 @@
         },
         {
             "type": "MCTSAgent",
-            "iterations": 10000,
+            "iterations": 1000,
             "exploration": 1.4
         }
     ],
-    "num_games": 20,
-    "verbose": false
+    "num_games": 50,
+    "verbose": false,
+    "dump_trajectories": "data/traj_dump.txt"
 }

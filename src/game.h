@@ -62,13 +62,15 @@ public:
     std::vector<std::shared_ptr<Agent<ActionT>>> agents;
     int num_games;
     bool verbose;
+    std::string dump_trajectories;
 
     GameSeriesTask(const json& jsn) {
         if (!jsn.contains("agents") || !jsn.contains("num_games")) {
             throw std::runtime_error("JSON must contain 'agents' and 'num_games' fields.");
         }
 
-        num_games = jsn["num_games"];
+        num_games = jsn.at("num_games");
+        dump_trajectories = jsn.contains("dump_trajectories") ? jsn.at("dump_trajectories") : "";
         verbose = jsn.value("verbose", false);
         for (const auto& player_config : jsn["agents"]) {
             agents.push_back(construct_agent<ActionT>(player_config));

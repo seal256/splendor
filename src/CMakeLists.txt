@@ -1,6 +1,7 @@
 set(SOURCE_FILES
     main.cpp
     splendor.cpp
+    util.cpp
 )
 
 add_executable(splendor ${SOURCE_FILES})

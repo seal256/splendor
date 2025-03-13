@@ -80,6 +80,12 @@ std::ostream& operator<<(std::ostream& os, const Noble& noble) {
     return os;
 }
 
+std::string Noble::to_str() const {
+    std::ostringstream os;
+    os << *this;
+    return os.str();
+}
+
 Card Card::from_str(const std::string& input) {
     assert(input[0] == '[' && input[3] == '|' && input[input.size() - 1] == ']');
     int gem = GEM_STR_TO_VAL.at(input[1]);
@@ -91,6 +97,12 @@ Card Card::from_str(const std::string& input) {
 std::ostream& operator<<(std::ostream& os, const Card& card) {
     os << "[" << GEM_STR[card.gem] << card.points << "|" << card.price << "]";
     return os;
+}
+
+std::string Card::to_str() const {
+    std::ostringstream os;
+    os << *this;
+    return os.str();
 }
 
 std::vector<Noble> init_nobles() {
@@ -112,8 +124,8 @@ std::vector<std::vector<Card>> init_cards() {
     return cards;
 }
 
-const std::vector<Noble> NOBLES = std::move(init_nobles());
-const std::vector<std::vector<Card>> CARDS = std::move(init_cards());
+const std::vector<Noble> NOBLES = init_nobles();
+const std::vector<std::vector<Card>> CARDS = init_cards();
 
 std::ostream& operator<<(std::ostream& os, const SplendorPlayerState& player) {
     os << "player " << player.id << " | points " << player.points << "\n"
@@ -209,6 +221,11 @@ std::ostream& operator<<(std::ostream& os, const Action& action) {
     return os;    
 }
 
+std::string Action::to_str() const {
+    std::ostringstream os;
+    os << *this;
+    return os.str();
+}
 
 std::unordered_map<int, SplendorGameRules> DEFAULT_RULES = {{2, SplendorGameRules(2)}, {3, SplendorGameRules(3)}, {4, SplendorGameRules(4)}};
 
@@ -280,7 +297,7 @@ std::vector<Action> SplendorGameState::get_actions() const {
     // 1. Take new gems
     // Two same gems
     ActionType action_type = ActionType::TAKE;
-    if (std::accumulate(player.gems.gems.begin(), player.gems.gems.end(), 0) < rules->max_player_gems - rules->max_same_gems_take) {
+    if (player.gems.sum() < rules->max_player_gems - rules->max_same_gems_take) {
         for (int gem = 0; gem < NUM_GEMS - 1; ++gem) { // Exclude gold gem
             if (gems.gems[gem] >= rules->min_same_gems_stack) {
                 GemSet gem_set;
@@ -291,7 +308,7 @@ std::vector<Action> SplendorGameState::get_actions() const {
     }
 
     // Three distinct gems
-    if (std::accumulate(player.gems.gems.begin(), player.gems.gems.end(), 0) < rules->max_player_gems - rules->max_gems_take) {
+    if (player.gems.sum() < rules->max_player_gems - rules->max_gems_take) {
         std::vector<int> available_gems;
         for (int gem = 0; gem < NUM_GEMS - 1; ++gem) { // Exclude gold gem
             if (gems.gems[gem] > 0) {
@@ -640,5 +657,78 @@ std::ostream& operator<<(std::ostream& os, const SplendorGameState& state) {
 
     return os;
 }
+
+void to_json(json& j, const GemSet& gem_set) {
+    j = json{
+        gem_set.gems
+    };
+}
+
+void to_json(json& j, const SplendorPlayerState& player_state) {
+    std::vector<std::string> hand_cards;
+    for (const auto card: player_state.hand_cards)
+        hand_cards.push_back(card->to_str());
+
+    j = json{
+        {"id", player_state.id},
+        {"card_gems", player_state.card_gems},
+        {"gems", player_state.gems},
+        {"hand_cards", hand_cards},
+        {"points", player_state.points}
+    };
+}
+
+void to_json(json& j, const SplendorGameRules& rules) {
+    j = json{
+        {"num_players", rules.num_players},
+        {"max_open_cards", rules.max_open_cards},
+        {"max_hand_cards", rules.max_hand_cards},
+        {"win_points", rules.win_points},
+        {"max_player_gems", rules.max_player_gems},
+        {"max_nobles", rules.max_nobles},
+        {"max_gems_take", rules.max_gems_take},
+        {"max_same_gems_take", rules.max_same_gems_take},
+        {"min_same_gems_stack", rules.min_same_gems_stack},
+        {"max_gold", rules.max_gold},
+        {"max_gems", rules.max_gems}
+    };
+}
+
+void to_json(json& j, const SplendorGameState& state) {
+    std::vector<std::string> nobles;
+    for (const auto noble : state.nobles)
+        nobles.push_back(noble->to_str());
+
+    std::vector<std::vector<std::string>> decks;
+    for (const auto& deck : state.decks) {
+        std::vector<std::string> deck_strs;
+        for (const auto card : deck)
+            deck_strs.push_back(card->to_str());
+        decks.push_back(deck_strs);
+    }
+
+    std::vector<std::vector<std::string>> cards;
+    for (const auto& card_row : state.cards) {
+        std::vector<std::string> card_row_strs;
+        for (const auto card : card_row)
+            card_row_strs.push_back(card->to_str());
+        cards.push_back(card_row_strs);
+    }
+
+    j = json{
+        // {"rules", state.rules},
+        {"round", state.round},
+        {"player_to_move", state.player_to_move},
+        {"skips", state.skips},
+        {"table_card_needed", state.table_card_needed},
+        {"deck_level", state.deck_level},
+        {"nobles", nobles},
+        {"decks", decks},
+        {"cards", cards},
+        {"gems", state.gems},
+        {"players", state.players}
+    };
+}
+
 
 } // namespace splendor

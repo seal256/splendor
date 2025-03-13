@@ -5,6 +5,9 @@
 #include <unordered_map>
 #include <string>
 
+#include "json.hpp"
+using nlohmann::json;
+
 #include "game_state.h"
 
 namespace splendor {
@@ -29,6 +32,7 @@ struct Noble {
 
     Noble(int points = 0, const GemSet& price = GemSet()) : points(points), price(price) {};
     static Noble from_str(const std::string& input); 
+    std::string to_str() const;
 };
 
 std::ostream& operator<<(std::ostream& os, const Noble& noble);
@@ -40,6 +44,7 @@ struct Card {
 
     Card(int gem = 0, int points = 0, const GemSet& price = GemSet()) : gem(gem), points(points), price(price) {};
     static Card from_str(const std::string& input); 
+    std::string to_str() const;
 };
 
 std::ostream& operator<<(std::ostream& os, const Card& card);
@@ -79,6 +84,7 @@ struct Action {
     Action(ActionType type) : type(type) {};
     Action() : type(ActionType::SKIP) {};
     static Action from_str(const std::string& input);
+    std::string to_str() const;
 };
 
 std::ostream& operator<<(std::ostream& os, const Action& action);
@@ -137,5 +143,10 @@ private:
 
 std::ostream& operator<<(std::ostream& os, const SplendorGameState& state);
 
+
+void to_json(json& j, const GemSet& gem_set);
+void to_json(json& j, const SplendorPlayerState& player_state);
+void to_json(json& j, const SplendorGameRules& rules);
+void to_json(json& j, const SplendorGameState& state);
 
 } // namespace splendor

@@ -1,5 +1,6 @@
 __pycache__
-build/**
-bin/**
+build/
+bin/
+data/
 splendor
 .vscode/settings.json
