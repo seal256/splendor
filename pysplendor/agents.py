@@ -1,8 +1,8 @@
 import random
 
-from game_state import GameState, Agent
-from splendor_game import SplendorGameState, SplendorPlayerState, GOLD_GEM, Action, ActionType
-from mcts import MCTS
+from .game_state import GameState, Agent
+from .splendor import SplendorGameState, SplendorPlayerState, GOLD_GEM, Action, ActionType
+from .mcts import MCTS
 
 class RandomAgent(Agent):
     def get_action(self, game_state: GameState):

@@ -1,6 +1,6 @@
-from splendor_game import SplendorGameState, SplendorGameRules, Action
-from agents import Agent, HumanPlayer, RandomAgent, MCTSAgent
-from game_state import GameState
+from .splendor import SplendorGameState, SplendorGameRules, Action
+from .agents import Agent, HumanPlayer, RandomAgent, MCTSAgent
+from .game_state import GameState
 
 def run_one_game(game_state: GameState, agents: list[Agent]):
     active_player = game_state.active_player()
@@ -21,7 +21,7 @@ def run_one_game(game_state: GameState, agents: list[Agent]):
         print(f'player {n} score: {score}')
 
 def one_round():
-    game_state = SplendorGameState(['a', 'b'], SplendorGameRules(2))
+    game_state = SplendorGameState(num_players = 2)
     agent = MCTSAgent(iterations=500)
     agent.get_action(game_state)
 
@@ -29,7 +29,18 @@ def profile():
     import cProfile
     cProfile.run('one_round()')
 
+class Trajectory():
+    def __init__(self, initial_state, actions, rewards):
+        self.initial_state = initial_state
+        self.actions = actions
+        self.rewards = rewards
 
+    @classmethod
+    def from_json(cls, data):
+        initial_state = SplendorGameState.from_json(data['initial_state'])
+        actions = [Action.from_str(a) for a in data['actions']]
+        rewards = data['rewards']
+        return cls(initial_state, actions, rewards)
 
 
 if __name__ == '__main__':

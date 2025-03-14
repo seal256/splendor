@@ -93,7 +93,7 @@ std::vector<Trajectory<ActionT>> run_games(const GameSeriesTask<ActionT>& task) 
         auto duration = static_cast<double>((std::chrono::duration_cast<std::chrono::milliseconds>(end - start)).count()) / 1000.0;
         std::cout << "Game " << game_num << " of " << task.num_games 
             << " took: " << duration << " sec " 
-            << " moves: " << trajectory.actions.size()
+            << " actions: " << trajectory.actions.size()
             << "\n";
     }
 

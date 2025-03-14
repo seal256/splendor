@@ -2,7 +2,7 @@ import random
 from tqdm import tqdm
 from copy import deepcopy
 
-from mcts import MCTS, GameState
+from .mcts import MCTS, GameState
 
 class TicTacToe(GameState):
     def __init__(self):

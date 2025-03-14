@@ -659,9 +659,7 @@ std::ostream& operator<<(std::ostream& os, const SplendorGameState& state) {
 }
 
 void to_json(json& j, const GemSet& gem_set) {
-    j = json{
-        gem_set.gems
-    };
+    j = gem_set.gems;
 }
 
 void to_json(json& j, const SplendorPlayerState& player_state) {
@@ -670,12 +668,21 @@ void to_json(json& j, const SplendorPlayerState& player_state) {
         hand_cards.push_back(card->to_str());
 
     j = json{
-        {"id", player_state.id},
-        {"card_gems", player_state.card_gems},
-        {"gems", player_state.gems},
-        {"hand_cards", hand_cards},
-        {"points", player_state.points}
+        {"id", player_state.id}
     };
+    
+    if (!player_state.card_gems.gems.empty()) {
+        j["card_gems"] = player_state.card_gems;
+    }
+    if (!player_state.gems.gems.empty()) {
+        j["gems"] = player_state.gems;
+    }
+    if (!hand_cards.empty()) {
+        j["hand_cards"] = hand_cards;
+    }
+    if (player_state.points) {
+        j["points"] = player_state.points;
+    }
 }
 
 void to_json(json& j, const SplendorGameRules& rules) {
@@ -717,17 +724,28 @@ void to_json(json& j, const SplendorGameState& state) {
 
     j = json{
         // {"rules", state.rules},
-        {"round", state.round},
-        {"player_to_move", state.player_to_move},
-        {"skips", state.skips},
-        {"table_card_needed", state.table_card_needed},
-        {"deck_level", state.deck_level},
         {"nobles", nobles},
         {"decks", decks},
         {"cards", cards},
         {"gems", state.gems},
         {"players", state.players}
     };
+    
+    if (state.round) {
+        j["round"] = state.round;
+    }
+    if (state.player_to_move) {
+        j["player_to_move"] = state.player_to_move;
+    }
+    if (state.skips) {
+        j["skips"] = state.skips;
+    }
+    if (state.table_card_needed) {
+        j["table_card_needed"] = state.table_card_needed;
+    }
+    if (state.deck_level) {
+        j["deck_level"] = state.deck_level;
+    }
 }
 
 

@@ -1,7 +1,7 @@
-import random, copy, csv
+import random, copy, csv, json
 from itertools import combinations
 
-from game_state import GameState
+from .game_state import GameState
 
 GOLD_GEM = 5 # index of the gold gem
 NUM_GEMS = 6
@@ -26,6 +26,36 @@ class GemSet(list):
     def __str__(self):
         return ''.join([GEM_STR[gem] + str(count) for gem, count in enumerate(self) if count > 0])
 
+    @classmethod
+    def from_str(cls, input_str):
+        '''Parses a string like "r2g1b4" and returns a GemSet object.'''
+        gem_set = cls()
+        pos = 0
+        while pos < len(input_str):
+            gem_char = input_str[pos]
+            if gem_char in GEM_STR_TO_VAL:
+                gem = GEM_STR_TO_VAL[gem_char]
+                pos += 1
+
+                # Check if the next character is a digit (count)
+                count = 1  # Default count is 1 if no number is specified
+                if pos < len(input_str) and input_str[pos].isdigit():
+                    count = int(input_str[pos])  # Read at most 1 digit
+                    pos += 1
+
+                gem_set[gem] += count
+            else:
+                raise ValueError(f"Invalid gem character '{gem_char}' in GemSet input string")
+        return gem_set
+    
+    @classmethod
+    def from_json(cls, data: list[int]):
+        '''Initializes from array of ints, no data validity checks'''
+        gs = cls()
+        if data:
+            gs[:] = data
+        return gs
+    
 class Noble:
     def __init__(self, points=0, price=None):
         self.points = points # number of win points
@@ -33,24 +63,11 @@ class Noble:
         if price is None:
             self.price = GemSet()
 
-    @staticmethod
-    def parse_str(string):
-        '''Parse from string (assumes serialization by self method str)'''
-        assert len(string) >= 8
-        points = int(string[1])
-        num_gems = (len(string) - 4)//2
-        assert num_gems >= 2 and num_gems <= 3
-        price = GemSet()
-        for n in range(num_gems):
-            gem = GEM_STR_TO_VAL.get(string[2*n + 3])
-            count = int(string[2*n + 4])
-            price[gem] += count
-        return points, price
-
     @classmethod
-    def from_str(cls, string):
-        '''Alternative constructor from string'''
-        points, price = Noble.parse_str(string)
+    def from_str(cls, input_str):
+        assert input_str[0] == '[' and input_str[2] == '|' and input_str[-1] == ']'
+        points = int(input_str[1])
+        price = GemSet.from_str(input_str[3:-1])
         return cls(points, price)
 
     def __str__(self):
@@ -66,6 +83,14 @@ class Card:
 
     def __str__(self):
         return '[' + GEM_STR[self.gem] + str(self.points) + '|' + str(self.price) + ']'
+
+    @classmethod
+    def from_str(cls, input_str):
+        assert input_str[0] == '[' and input_str[3] == '|' and input_str[-1] == ']'
+        gem = GEM_STR_TO_VAL[input_str[1]]
+        points = int(input_str[2])
+        price = GemSet.from_str(input_str[4:-1])
+        return cls(gem, points, price)
 
 def read_cards_from_csv(file_name):
     cards = [[], [], []]
@@ -85,7 +110,7 @@ def read_cards_from_csv(file_name):
 
 NOBLES = tuple(map(Noble.from_str, ['[3|r4g4]', '[3|g4b4]', '[3|b4w4]', '[3|w4k4]', '[3|k4r4]',
     '[3|r3g3b3]', '[3|b3g3w3]', '[3|b3w3k3]', '[3|w3k3r3]', '[3|k3r3g3]']))
-CARDS = read_cards_from_csv('./python_splendor/cards.csv')
+CARDS = read_cards_from_csv('./pysplendor/cards.csv')
 
 def print_cards():
     for level, deck in enumerate(CARDS):
@@ -93,15 +118,15 @@ def print_cards():
         print(','.join([f'"{card}"' for card in deck]))
     
 class SplendorPlayerState:
-    def __init__(self, name):
-        self.name = name
+    def __init__(self, id):
+        self.id = id
         self.card_gems = GemSet() # gems of acquired cards
         self.gems = GemSet() # gems on the table
         self.hand_cards = []
         self.points = 0 # winning points from all aquired cards
 
     def __str__(self):
-        s = self.name + '|' + str(self.points) + '\n'
+        s = 'player ' + self.id + '|' + str(self.points) + '\n'
         s += 'card gems:' + str(self.card_gems) + '\n'
         s += 'gems:' + str(self.gems) + '\n'
         s += 'hand:'
@@ -117,10 +142,19 @@ class SplendorPlayerState:
         cp.hand_cards = list(self.hand_cards)
         return cp
 
+    @classmethod
+    def from_json(cls, player_data):
+        player = cls(player_data['id'])
+        player.card_gems = GemSet.from_json(player_data.get('card_gems'))
+        player.gems = GemSet.from_json(player_data.get('gems'))
+        player.hand_cards = [Card.from_str(card) for card in player_data.get('hand_cards', [])]
+        player.points = player_data.get('points', 0)
+        return player
+
 class Action:
-    def __init__(self, action_type: ActionType, gems: list[str] = None, level: int = None, pos:int = None):
+    def __init__(self, action_type: ActionType, gems: GemSet = None, level: int = None, pos:int = None):
         self.type: ActionType = action_type
-        self.gems: list[str] = gems # list of gem idx-s 
+        self.gems: GemSet = gems
         self.level: int = level
         self.pos: int = pos
 
@@ -137,44 +171,27 @@ class Action:
             raise ValueError('Unknown action type')
 
     @classmethod
-    def from_str(cls, action_str):
-        try:
-            action_type, gems, level, pos = Action.parse(action_str)
-            return cls(action_type, gems, level, pos)
-        except Exception:
-            raise ValueError('Invalid action string {}'.format(action_str))
+    def from_str(cls, input_str):
+        if not input_str:
+            raise ValueError("Action string is empty")
 
-    @staticmethod
-    def parse(action_str):
-        action_type = action_str[0] # should be one of ACTIONS
+        action_type = input_str[0]
         gems = None
-        level = None
-        pos = None
+        level = -1
+        pos = -1
 
-        if action_type == ActionType.skip:
-            pass
-        elif action_type == ActionType.take: 
-            gems = [g for g in action_str[1:]]
-        elif action_type == ActionType.reserve: 
-            level, pos = Action.scan_level_pos(action_str)
-        elif action_type == ActionType.purchase: 
-            level, pos = Action.scan_level_pos(action_str) 
-        elif action_type == ActionType.purchase_hand: 
-            pos = (int(action_str[1:]),) # the 0-based index of a hand card
-        elif action_type == ActionType.new_table_card:
-            pos = (int(action_str[1:]),) # the 0-based index of a deck card
-        else:
-            raise ValueError('Invalid action type {} (in action {})'.format(action_type, action_str))
-        
-        return action_type, gems, level, pos
+        if action_type == ActionType.take:
+            gems = GemSet.from_str(input_str[1:])
+        elif action_type in (ActionType.reserve, ActionType.purchase):
+            separator_pos = input_str.find('n')
+            if separator_pos == -1 or separator_pos == 0 or separator_pos == len(input_str) - 1:
+                raise ValueError(f"Invalid format for level and position in action {input_str}")
+            level = int(input_str[1:separator_pos])
+            pos = int(input_str[separator_pos + 1:])
+        elif action_type in (ActionType.purchase_hand, ActionType.new_table_card):
+            pos = int(input_str[1:])
 
-    @staticmethod
-    def scan_level_pos(action_str):
-        parts = action_str.split('n') # seperator between the card level and position
-        assert len(parts) == 2
-        level = int(parts[0])
-        pos = int(parts[1])
-        return level, pos
+        return cls(action_type, gems, level, pos)
 
 class SplendorGameRules:
     '''A set of constants that affect the game mechanics. Depend on the number of players'''
@@ -194,13 +211,15 @@ class SplendorGameRules:
         if self.num_players < 4:
             self.max_gems = 2 + self.num_players
  
+DEFAULT_RULES = {n: SplendorGameRules(n) for n in range(2, 5)}
+
 class SplendorGameState(GameState):
     '''Knows game rules)'''
 
-    def __init__(self, player_names, rules: SplendorGameRules):
-        assert rules.num_players == len(player_names)
-
+    def __init__(self, num_players, rules: SplendorGameRules = None):
         self.rules = rules
+        if rules is None:
+            self.rules = DEFAULT_RULES[num_players]
         self.round = 0
         self.player_to_move = 0
         self.skips = 0 # number of players that skipped move in this round. If all players skipped, the game ends
@@ -227,7 +246,7 @@ class SplendorGameState(GameState):
         self.gems[GOLD_GEM] = self.rules.max_gold
 
         # init players
-        self.players = [SplendorPlayerState(name) for name in player_names]
+        self.players = [SplendorPlayerState(n) for n in range(num_players)]
 
     def copy(self):
         cp = copy.copy(self) # shallow copy
@@ -260,6 +279,22 @@ class SplendorGameState(GameState):
             s += str(player)
 
         return s 
+
+    @staticmethod
+    def from_json(data):
+        num_players = len(data['players'])
+        game_state = SplendorGameState(num_players)
+        game_state.round = data.get('round', 0)
+        game_state.player_to_move = data.get('player_to_move', 0)
+        game_state.skips = data.get('skips', )
+        game_state.table_card_needed = data.get('table_card_needed', False)
+        game_state.deck_level = data.get('deck_level', None)
+        game_state.nobles = [Noble.from_str(noble) for noble in data['nobles']]
+        game_state.cards = [[Card.from_str(card) for card in level] for level in data['cards']]
+        game_state.decks = [[Card.from_str(card) for card in level] for level in data['decks']]
+        game_state.gems = GemSet.from_json(data['gems'])
+        game_state.players = [SplendorPlayerState.from_json(player) for player in data['players']]
+        return game_state
 
     def apply_action(self, action: Action):
         player = self.players[self.player_to_move]

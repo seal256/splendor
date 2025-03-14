@@ -2,7 +2,7 @@ import math
 import random
 from tqdm import tqdm
 
-from game_state import GameState
+from .game_state import GameState
 
 class Node:
     '''MCTS node (that doesn't store the state)'''
