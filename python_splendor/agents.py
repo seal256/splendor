@@ -1,6 +1,6 @@
 import random
 
-from game import GameState, Agent
+from game_state import GameState, Agent
 from splendor_game import SplendorGameState, SplendorPlayerState, GOLD_GEM, Action, ActionType
 from mcts import MCTS
 

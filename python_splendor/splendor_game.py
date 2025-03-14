@@ -1,7 +1,7 @@
 import random, copy, csv
 from itertools import combinations
 
-from game import GameState
+from game_state import GameState
 
 GOLD_GEM = 5 # index of the gold gem
 NUM_GEMS = 6
@@ -85,7 +85,7 @@ def read_cards_from_csv(file_name):
 
 NOBLES = tuple(map(Noble.from_str, ['[3|r4g4]', '[3|g4b4]', '[3|b4w4]', '[3|w4k4]', '[3|k4r4]',
     '[3|r3g3b3]', '[3|b3g3w3]', '[3|b3w3k3]', '[3|w3k3r3]', '[3|k3r3g3]']))
-CARDS = read_cards_from_csv('cards.csv')
+CARDS = read_cards_from_csv('./python_splendor/cards.csv')
 
 def print_cards():
     for level, deck in enumerate(CARDS):

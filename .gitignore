@@ -4,3 +4,4 @@ bin/
 data/
 splendor
 .vscode/settings.json
+.DS_Store

@@ -1,47 +1,42 @@
-from abc import ABC, abstractmethod
-from copy import deepcopy
+from splendor_game import SplendorGameState, SplendorGameRules, Action
+from agents import Agent, HumanPlayer, RandomAgent, MCTSAgent
+from game_state import GameState
 
-class GameState(ABC):
-    @abstractmethod
-    def get_actions(self):
-        '''Returns the list of legal actions'''
-        pass
+def run_one_game(game_state: GameState, agents: list[Agent]):
+    active_player = game_state.active_player()
+    while not game_state.is_terminal():
+        if active_player is None: # chance game state
+            action = game_state.get_actions()[0]
+        else:
+            action = agents[active_player].get_action(game_state)
 
-    @abstractmethod
-    def active_player(self) -> int:
-        '''Returns the index of the active player (who's turn is now) or None for a chance game state. Can be used as an index for the rewards list.'''
-        pass
+        print(game_state)
+        print(f'selected action: {action}\n')
 
-    @abstractmethod
-    def apply_action(self, action):
-        '''Applies the action to thae game state, modifying it'''
-        pass
+        game_state.apply_action(action)
+        active_player = game_state.active_player()
 
-    @abstractmethod
-    def is_terminal(self) -> bool:
-        '''Returns true if the state is terminal'''
-        pass
+    print('Final scores:')
+    for n, score in enumerate(game_state.rewards()):
+        print(f'player {n} score: {score}')
 
-    @abstractmethod
-    def rewards(self) -> list[float]:
-        '''Returns a list of rewards for each player'''
-        pass
+def one_round():
+    game_state = SplendorGameState(['a', 'b'], SplendorGameRules(2))
+    agent = MCTSAgent(iterations=500)
+    agent.get_action(game_state)
 
-    @abstractmethod
-    def copy(self):
-        '''Copy of the state, that allows independent game continuation from the new object'''
-        pass
+def profile():
+    import cProfile
+    cProfile.run('one_round()')
 
-class Agent(ABC):
-    '''Game player'''
 
-    @abstractmethod
-    def get_action(game_state: GameState):
-        pass
 
-    # def is_stateless(self):
-    #     return True
-    
-    # def apply_action(action):
-    #     '''Stateful agents should implement this method to keep track of the game'''
-    #     pass
+
+if __name__ == '__main__':
+    agents = [RandomAgent(), MCTSAgent(iterations=5000)]
+    names = [f'player{n}' for n in range(len(agents))]
+    game_state = SplendorGameState(names, SplendorGameRules(len(agents)))
+    run_one_game(game_state, agents)
+
+    # one_round()
+    # profile()
