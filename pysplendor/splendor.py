@@ -26,6 +26,9 @@ class GemSet(list):
     def __str__(self):
         return ''.join([GEM_STR[gem] + str(count) for gem, count in enumerate(self) if count > 0])
 
+    def unique(self):
+        return sum([1 for x in self if x > 0])
+
     @classmethod
     def from_str(cls, input_str):
         '''Parses a string like "r2g1b4" and returns a GemSet object.'''
@@ -126,9 +129,9 @@ class SplendorPlayerState:
         self.points = 0 # winning points from all aquired cards
 
     def __str__(self):
-        s = 'player ' + self.id + '|' + str(self.points) + '\n'
-        s += 'card gems:' + str(self.card_gems) + '\n'
-        s += 'gems:' + str(self.gems) + '\n'
+        s = f'player {self.id} | points: {self.points}\n'
+        s += f'card gems: {self.card_gems}\n'
+        s += f'gems: {self.gems}\n'
         s += 'hand:'
         for card in self.hand_cards:
             s += str(card)
@@ -212,6 +215,7 @@ class SplendorGameRules:
             self.max_gems = 2 + self.num_players
  
 DEFAULT_RULES = {n: SplendorGameRules(n) for n in range(2, 5)}
+CHANCE_PLAYER = -1
 
 class SplendorGameState(GameState):
     '''Knows game rules)'''
@@ -286,9 +290,9 @@ class SplendorGameState(GameState):
         game_state = SplendorGameState(num_players)
         game_state.round = data.get('round', 0)
         game_state.player_to_move = data.get('player_to_move', 0)
-        game_state.skips = data.get('skips', )
+        game_state.skips = data.get('skips', 0)
         game_state.table_card_needed = data.get('table_card_needed', False)
-        game_state.deck_level = data.get('deck_level', None)
+        game_state.deck_level = data.get('deck_level', 0)
         game_state.nobles = [Noble.from_str(noble) for noble in data['nobles']]
         game_state.cards = [[Card.from_str(card) for card in level] for level in data['cards']]
         game_state.decks = [[Card.from_str(card) for card in level] for level in data['decks']]
@@ -305,32 +309,35 @@ class SplendorGameState(GameState):
             self.skips += 1
             self._increment_player_to_move()
 
-        elif action.type == ActionType.take: 
-            gems = action.gems
-            unique_gems = list(set(gems))
-            if len(gems) > self.rules.max_gems_take:
-                raise ValueError('Can\'t take more than {} gems'.format(self.rules.max_gems_take))
-            if len(unique_gems) == 1: # all same color
-                if self.gems[unique_gems[0]] < self.rules.min_same_gems_stack:
-                    raise ValueError('Should be at least {} gems in stack'.format(self.rules.min_same_gems_stack))
-                if len(gems) != 1 and len(gems) > self.rules.max_same_gems_take: 
-                    raise ValueError('Can\'t take more than {} identical gems'.format(self.rules.max_same_gems_take))
-            if len(unique_gems) > 1 and len(unique_gems) != len(gems): 
-                raise ValueError('You can either take all identical or all different gems')
-            if sum(player.gems) + len(gems) > self.rules.max_player_gems:
-                raise ValueError('Player can\'t have more than {} gems'.format(self.rules.max_player_gems))
+        elif action.type == ActionType.take:
+            unique_gems_take = action.gems.unique()
+            total_gems_take = sum(action.gems)
 
-            for gem in gems:
-                if gem not in GEMS:
-                    raise ValueError('Invalid gem {}'.format(gem))
-                if gem == GOLD_GEM:
-                    raise ValueError('You are not allowed to take gold ({}) gem'.format(GOLD_GEM))
-                if self.gems[gem] == 0:
-                    raise ValueError('Not inough {} gems on table'.format(gem))
-                
-                player.gems[gem] += 1
-                self.gems[gem] -= 1
-            
+            if total_gems_take > self.rules.max_gems_take:
+                raise ValueError(f"Can't take more than {self.rules.max_gems_take} gems")
+
+            if unique_gems_take == 1:  # All same color
+                color = next((n for n, gem in enumerate(action.gems) if gem > 0), None)
+                if self.gems[color] < self.rules.min_same_gems_stack:
+                    raise ValueError(f"Should be at least {self.rules.min_same_gems_stack} gems in stack")
+                if action.gems[color] > self.rules.max_same_gems_take:
+                    raise ValueError(f"Can't take more than {self.rules.max_same_gems_take} identical gems")
+
+            if unique_gems_take > 1 and unique_gems_take != total_gems_take:
+                raise ValueError("You can either take all identical or all different gems")
+
+            if sum(player.gems) + total_gems_take > self.rules.max_player_gems:
+                raise ValueError(f"Player can't have more than {self.rules.max_player_gems} gems")
+
+            for gem, gem_count in enumerate(action.gems):
+                if gem_count > 0:
+                    if gem == GOLD_GEM:
+                        raise ValueError("You are not allowed to take gold gem")
+                    if gem_count > self.gems[gem]:
+                        raise ValueError(f"Not enough {gem} gems on table")
+                    player.gems[gem] += gem_count
+                    self.gems[gem] -= gem_count
+
             self._increment_player_to_move()
 
         elif action.type == ActionType.reserve: 
@@ -387,13 +394,14 @@ class SplendorGameState(GameState):
 
             if not self.table_card_needed:
                 raise ValueError('Game does not require a new table card at the moment')
-            if action.level < 0 or action.level >= CARD_LEVELS:
-                raise ValueError('Invalid deck level {}'.format(action.level))
-            if action.pos < 0 or action.pos >= len(self.decks[action.level]):
+            # deck_level to add a new card is stored in the game state, not in the action
+            if self.deck_level < 0 or self.deck_level >= CARD_LEVELS:
+                raise ValueError('Invalid deck level {}'.format(self.deck_level))
+            if action.pos < 0 or action.pos >= len(self.decks[self.deck_level]):
                 raise ValueError('Invalid card position {}'.format(action.pos))
             
-            new_card = self.decks[action.level].pop(action.pos)
-            self.cards[action.level].append(new_card)
+            new_card = self.decks[self.deck_level].pop(action.pos)
+            self.cards[self.deck_level].append(new_card)
             self.table_card_needed = False
             # since this is not a player's action, we do not increment the active player's index
 
@@ -523,7 +531,7 @@ class SplendorGameState(GameState):
 
     def active_player(self):
         if self.table_card_needed:
-            return None
+            return CHANCE_PLAYER
         return self.player_to_move
 
     def is_terminal(self):

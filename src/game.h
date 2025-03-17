@@ -13,10 +13,11 @@ struct Trajectory {
     std::shared_ptr<GameState<ActionT>> initial_state;
     std::vector<ActionT> actions;
     std::vector<double> rewards; // obtained at the end of the game
+    std::vector<std::shared_ptr<GameState<ActionT>>> states; // optional
 };
 
 template<typename ActionT>
-Trajectory<ActionT> run_one_game(std::shared_ptr<GameState<ActionT>> game_state, const std::vector<std::shared_ptr<Agent<ActionT>>>& agents, bool verbose=false) {
+Trajectory<ActionT> run_one_game(std::shared_ptr<GameState<ActionT>> game_state, const std::vector<std::shared_ptr<Agent<ActionT>>>& agents, bool verbose=false, bool save_states=false) {
     Trajectory<ActionT> trajectory;
     trajectory.initial_state = game_state->clone();
 
@@ -39,6 +40,8 @@ Trajectory<ActionT> run_one_game(std::shared_ptr<GameState<ActionT>> game_state,
 
         trajectory.actions.push_back(action);
         game_state->apply_action(action);
+        if (save_states) // debug feature. Normally you should be able to reconstruct all states from initial_state and actions
+            trajectory.states.push_back(game_state->clone());
         active_player = game_state->active_player();
     }
 
@@ -62,6 +65,7 @@ public:
     std::vector<std::shared_ptr<Agent<ActionT>>> agents;
     int num_games;
     bool verbose;
+    bool save_states;
     std::string dump_trajectories;
 
     GameSeriesTask(const json& jsn) {
@@ -72,6 +76,7 @@ public:
         num_games = jsn.at("num_games");
         dump_trajectories = jsn.contains("dump_trajectories") ? jsn.at("dump_trajectories") : "";
         verbose = jsn.value("verbose", false);
+        save_states = jsn.value("save_states", false); 
         for (const auto& player_config : jsn["agents"]) {
             agents.push_back(construct_agent<ActionT>(player_config));
         }
@@ -86,7 +91,7 @@ std::vector<Trajectory<ActionT>> run_games(const GameSeriesTask<ActionT>& task) 
         auto start = std::chrono::high_resolution_clock::now();
 
         auto game_state = std::make_shared<GameStateT>(task.agents.size());
-        Trajectory<ActionT> trajectory = run_one_game<ActionT>(game_state, task.agents, task.verbose);
+        Trajectory<ActionT> trajectory = run_one_game<ActionT>(game_state, task.agents, task.verbose, task.save_states);
         trajectories.push_back(trajectory);
 
         auto end = std::chrono::high_resolution_clock::now();

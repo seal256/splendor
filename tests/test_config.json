@@ -1,0 +1,14 @@
+{
+    "agents": [
+        {
+            "type": "RandomAgent"
+        },
+        {
+            "type": "RandomAgent"
+        }
+    ],
+    "num_games": 10,
+    "verbose": false,
+    "save_states": true,
+    "dump_trajectories": "data/traj_dump.txt"
+}

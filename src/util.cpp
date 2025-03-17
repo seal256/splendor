@@ -73,12 +73,19 @@ void to_json(json& j, const Trajectory<Action>& traj) {
     std::vector<std::string> actions;
     for (const auto action : traj.actions)
         actions.push_back(action.to_str());
-
+    
     j = {
         {"initial_state", *dynamic_cast<SplendorGameState*>(traj.initial_state.get())},
         {"rewards", traj.rewards},
         {"actions", actions}
     };
+
+    if (!traj.states.empty()) {
+        std::vector<json> states;
+        for (auto state : traj.states)
+            states.push_back(*dynamic_cast<SplendorGameState*>(state.get()));
+        j["states"] = states;
+    }
 }
 
 void dump_trajectories(const std::string& file_name, const std::vector<Trajectory<Action>>& trajectories) {

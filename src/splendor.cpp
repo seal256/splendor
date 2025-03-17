@@ -496,16 +496,17 @@ void SplendorGameState::apply_action(const Action& action) {
             if (!table_card_needed) {
                 throw std::invalid_argument("Game does not require a new table card at the moment");
             }
-            if (action.level < 0 || action.level >= decks.size()) {
+            // deck_level to add a new card is stored in the game state, not in the action
+            if (deck_level < 0 || deck_level >= decks.size()) {
                 throw std::invalid_argument("Invalid deck level");
             }
-            if (action.pos < 0 || action.pos >= decks[action.level].size()) {
+            if (action.pos < 0 || action.pos >= decks[deck_level].size()) {
                 throw std::invalid_argument("Invalid card position");
             }
 
-            const Card* new_card = decks[action.level][action.pos];
-            decks[action.level].erase(decks[action.level].begin() + action.pos);
-            cards[action.level].push_back(new_card);
+            const Card* new_card = decks[deck_level][action.pos];
+            decks[deck_level].erase(decks[deck_level].begin() + action.pos);
+            cards[deck_level].push_back(new_card);
             table_card_needed = false;
             break;
         }
@@ -618,7 +619,7 @@ void SplendorGameState::_get_noble(SplendorPlayerState& player) {
             }
         }
         if (can_afford) {
-            int noble_idx = n;
+            noble_idx = n;
             break; // We take the first appropriate noble for simplicity. There's no action to select the noble if the player can choose among more than one
         }
     }
