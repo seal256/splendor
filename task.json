@@ -11,7 +11,7 @@
             "exploration": 1.4
         }
     ],
-    "num_games": 50,
+    "num_games": 100,
     "verbose": false,
     "dump_trajectories": "data/traj_dump.txt"
 }
