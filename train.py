@@ -1,8 +1,8 @@
+from datetime import datetime
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader, Dataset, random_split
-from sklearn.model_selection import train_test_split
 import numpy as np
 
 STATE_LEN = 1052
@@ -13,6 +13,9 @@ class SplendorDataset(Dataset):
         """
         Args:
             data_fname_prefix (str): Prefix of the .npy files containing the states, actions, and rewards.
+        
+        Notes:
+            keeps all the data in memory
         """
         states = np.load(data_fname_prefix + "_states.npy", allow_pickle=True)
         actions = np.load(data_fname_prefix + "_actions.npy", allow_pickle=True)
@@ -56,13 +59,14 @@ class TwoHeadMLP(nn.Module):
         qval_output = torch.sigmoid(self.qval_head(shared_output))
         return action_output, qval_output
 
-def train_epoch(model, train_loader, optimizer, device):
+def train_epoch(model, data_loader, optimizer, device):
     model.train()
-    running_loss = 0.0
+    total_loss_action = 0.0
+    total_loss_qval = 0.0
     action_correct = 0
-    action_total = 0
+    num_samples = 0
     
-    for X_batch, y_action_batch, y_qval_batch in train_loader:
+    for X_batch, y_action_batch, y_qval_batch in data_loader:
         X_batch, y_action_batch, y_qval_batch = X_batch.to(device), y_action_batch.to(device), y_qval_batch.to(device)
         optimizer.zero_grad()
         
@@ -75,61 +79,65 @@ def train_epoch(model, train_loader, optimizer, device):
         loss.backward()
         optimizer.step()
         
-        running_loss += loss.item()
+        total_loss_action += loss_action.item()
+        total_loss_qval += loss_qval.item()
         
         action_correct += torch.sum(torch.argmax(action_output, dim=1) == y_action_batch).item()
-        action_total += y_action_batch.size(0)
+        num_samples += y_action_batch.size(0)
     
-    train_loss = running_loss / len(train_loader)
-    train_action_accuracy = action_correct / action_total
+    num_batches = len(data_loader)
+    action_accuracy = action_correct / num_samples
     
-    return train_loss, train_action_accuracy
+    return total_loss_action / num_batches, total_loss_qval / num_batches, action_accuracy
 
-def validate(model, val_loader, device):
+def validate(model, data_loader, device):
     model.eval()
-    total_loss = 0.0
+    total_loss_action = 0.0
+    total_loss_qval = 0.0
     action_correct = 0
-    action_total = 0
+    num_samples = 0
     
     with torch.no_grad():
-        for X_batch, y_action_batch, y_qval_batch in val_loader:
+        for X_batch, y_action_batch, y_qval_batch in data_loader:
             X_batch, y_action_batch, y_qval_batch = X_batch.to(device), y_action_batch.to(device), y_qval_batch.to(device)
             
             action_output, qval_output = model(X_batch)
             
-            loss_action = F.cross_entropy(action_output, y_action_batch)
+            loss_action = F.cross_entropy(action_output, y_action_batch) # averaged over the batch
             loss_qval = F.mse_loss(qval_output.squeeze(), y_qval_batch)
-            total_loss += (loss_action + loss_qval).item()
-            
+
+            total_loss_action += loss_action.item()
+            total_loss_qval += loss_qval.item()            
             action_correct += torch.sum(torch.argmax(action_output, dim=1) == y_action_batch).item()
-            action_total += y_action_batch.size(0)
+            num_samples += y_action_batch.size(0)
     
-    total_loss = total_loss / len(val_loader)
-    val_action_accuracy = action_correct / action_total
+    num_batches = len(data_loader)
+    action_accuracy = action_correct / num_samples
     
-    return total_loss, val_action_accuracy
+    return total_loss_action / num_batches, total_loss_qval / num_batches, action_accuracy
 
 def print_weigths(model):
     for name, param in model.named_parameters():
         if param.requires_grad:
             weight_norm = torch.norm(param, p=2).item()
             grad_norm = torch.norm(param.grad, p=2).item() if param.grad is not None else 0.0
-            print(f"Layer {name}: weight norm: {weight_norm:.4f}, grad norm: {grad_norm:.4f}")
+            print(f"{name}: weight norm: {weight_norm:.4f}, grad norm: {grad_norm:.4f}")
+    print()
 
 
 def train_loop(model, train_loader, val_loader, optimizer, device, num_epochs, verbose=True):
     model = model.to(device)
     
     for epoch in range(num_epochs):
-        train_loss, train_action_accuracy = train_epoch(model, train_loader, optimizer, device)
-        val_loss, val_action_accuracy = validate(model, val_loader, device)
+        train_loss_action, train_loss_qval, train_action_accuracy = train_epoch(model, train_loader, optimizer, device)
+        val_loss_action, val_loss_qval, val_action_accuracy = validate(model, val_loader, device)
         
-        print(f"Epoch {epoch+1}/{num_epochs}, "
-              f"train loss: {train_loss:.4f}, train accuracy: {train_action_accuracy:.4f}, "
-              f"val loss: {val_loss:.4f}, val accuracy: {val_action_accuracy:.4f}")
+        curr_time = datetime.now().strftime("%H:%M:%S")
+        print(f"{curr_time} Epoch {epoch+1}/{num_epochs}, "
+              f"train loss action: {train_loss_action:.4f}, loss qval: {train_loss_qval:.4f}, accuracy: {train_action_accuracy:.4f}, "
+              f"val loss action: {val_loss_action:.4f}, loss qval: {val_loss_qval:.4f}, accuracy: {val_action_accuracy:.4f}")
         if verbose:
             print_weigths(model)
-            print()
 
     print("done!")
 
@@ -138,12 +146,16 @@ def train():
     np.random.seed(seed)
     torch.manual_seed(seed)
 
-    batch_size = 32
+    batch_size = 128
 
     device = "mps" if torch.backends.mps.is_available() else "cpu"
     print(f'device: {device}')
 
-    dataset = SplendorDataset(data_fname_prefix='./data/train/iter0')
+    model_path = './data/models/mlp_10k.pth'
+    model = TwoHeadMLP(input_size=STATE_LEN, hidden_size=100, num_actions=NUM_ACTIONS)
+    # model.load_state_dict(torch.load(model_path))
+
+    dataset = SplendorDataset(data_fname_prefix='./data/train/iter0_10k')
     train_size = int(0.8 * len(dataset))
     val_size = len(dataset) - train_size
     train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
@@ -151,13 +163,57 @@ def train():
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
-    model = TwoHeadMLP(input_size=STATE_LEN, hidden_size=1000, num_actions=NUM_ACTIONS).to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.005)
+    optimizer = torch.optim.Adam(model.parameters(), lr=3e-3)
 
-    train_loop(model, train_loader, val_loader, optimizer, device, num_epochs=100)
+    train_loop(model, train_loader, val_loader, optimizer, device, num_epochs=20, verbose=False)
 
-    return model
+    torch.save(model.state_dict(), model_path)
+    print(f'Final model saved to {model_path}')
+
+
+def model_predict(model, state_encoder, state, K=5):
+    '''Retruns top K predicted actions and qvalue'''
+    state_vec = state_encoder.state_to_vec(state)
+    X = torch.tensor(state_vec, dtype=torch.float32)
+    logits, qval = model.forward(X)
+    top_actions = np.argsort(logits.detach().numpy())[-K:]
+    logits = logits[top_actions]
+    return top_actions, logits, qval.item()
+
+def run_model():
+    '''Aloows to inspect the moves predicted by the model'''
+    from prepare_data import SplendorGameStateEncoder, ALL_ACTIONS
+    from pysplendor.game import Trajectory, traj_loader
+    from pysplendor.splendor import Action, CHANCE_PLAYER
+    state_encoder = SplendorGameStateEncoder(2)
+    STATE_LEN = 1052
+    NUM_ACTIONS = 43
+
+    model = TwoHeadMLP(STATE_LEN, 50, NUM_ACTIONS)
+    model_path = './data/models/mlp_0.pth'
+    state_dict = torch.load(model_path)
+    model.load_state_dict(state_dict)
+    model.eval()
+
+    traj_file = './data/traj_dump_10k.txt'
+    loader = traj_loader(traj_file)
+    for _ in range(1100):
+        next(loader)
+    traj = next(loader) # pick one
+    state = traj.initial_state.copy()
+    rewards = traj.rewards
+
+    for action in traj.actions:
+        if state.active_player() != CHANCE_PLAYER: # ignore chance nodes
+            top_actions, logits, qval = model_predict(model, state_encoder, state, K=5)
+            print(state)
+            suggested_actions = ' '.join([f'{ALL_ACTIONS[a]} ({l:.2f})' for a, l in zip(top_actions, logits)])
+            print(f'predicted actions: {suggested_actions} qval: {qval:.3f} reward: {rewards[state.active_player()]}')
+            print(f'actual action: {action}\n')
+
+        state.apply_action(action)
 
 if __name__ == "__main__":
 
-    model = train()
+    train()
+    # run_model()

@@ -1,7 +1,7 @@
 import subprocess
 import os
 
-from pysplendor.game import Trajectory, traj_iter
+from pysplendor.game import Trajectory, traj_loader
 from pysplendor.splendor import SplendorGameState, CARD_LEVELS, Action
 
 BINARY_PATH = "./splendor"
@@ -73,12 +73,12 @@ def test_cpp_vs_python_splendor_implementation_equivalence():
 
     assert os.path.exists(TRAJ_DUMP_PATH), f"Trajectories not found in {TRAJ_DUMP_PATH}"
 
-    for n, traj in enumerate(traj_iter(TRAJ_DUMP_PATH)):
+    for n, traj in enumerate(traj_loader(TRAJ_DUMP_PATH)):
         print(f'Trajectory {n}')
         py_state: SplendorGameState = traj.initial_state.copy()
         for n, (action, cpp_state) in enumerate(zip(traj.actions, traj.states)):
             prev_state = py_state.copy()
-            py_state.apply_action(Action.from_str(action))
+            py_state.apply_action(action)
             try:
                 compare_states(py_state, cpp_state)
             except Exception as e:

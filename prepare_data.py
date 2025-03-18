@@ -1,7 +1,7 @@
-import json
+import time
 import numpy as np
 
-from pysplendor.game import Trajectory, traj_iter
+from pysplendor.game import Trajectory, traj_loader
 from pysplendor.splendor import SplendorGameState, SplendorPlayerState, Action, GemSet, Card, Noble, NUM_GEMS, CARD_LEVELS, DEFAULT_RULES, CHANCE_PLAYER
 
     
@@ -82,27 +82,37 @@ class SplendorGameStateEncoder:
 
 def prepare_data(traj_file, data_fname_prefix, num_players = 2):
     '''Creates 3 files with states, actions and rewards'''
+
     states = []
     actions = []
     rewards = []
     state_encoder = SplendorGameStateEncoder(num_players)
-    for traj in traj_iter(traj_file):
+
+    start = time.perf_counter()
+    num_states = 0
+    num_traj = 0
+    for traj in traj_loader(traj_file):
         state = traj.initial_state.copy()
         for action in traj.actions:
             if state.active_player() != CHANCE_PLAYER: # ignore chance nodes
                 state_vec = state_encoder.state_to_vec(state)
                 states.append(np.packbits(state_vec)) # compressed bytes
-                actions.append(ACTION_ID[action]) # ints
+                actions.append(ACTION_ID[str(action)]) # ints
                 rewards.append(traj.rewards[state.active_player()]) # 0 or 1 
+                num_states += 1
 
-            state.apply_action(Action.from_str(action))
+            state.apply_action(action)
+
+        num_traj += 1
 
     np.save(data_fname_prefix + "_states.npy", np.array(states))
     np.save(data_fname_prefix + "_actions.npy", np.array(actions, dtype=np.uint8))
     np.save(data_fname_prefix + "_rewards.npy", np.array(rewards, dtype=np.uint8))
 
+    elapsed = time.perf_counter() - start
+    print(f'Processed {num_traj} trajectories, {num_states} states in {elapsed:.2f} sec, {num_traj/elapsed:.2f} traj/sec')
 
 
 if __name__ == '__main__':
-    print(len(ALL_ACTIONS))
-    # prepare_data('./data/traj_dump.txt', './data/train/iter0')
+    # print(len(ALL_ACTIONS))
+    prepare_data('./data/traj_dump_10k.txt', './data/train/iter0_10k')

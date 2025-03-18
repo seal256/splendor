@@ -132,10 +132,8 @@ class SplendorPlayerState:
         s = f'player {self.id} | points: {self.points}\n'
         s += f'card gems: {self.card_gems}\n'
         s += f'gems: {self.gems}\n'
-        s += 'hand:'
-        for card in self.hand_cards:
-            s += str(card)
-        s += '\n'
+        cards = ' '.join([str(card) for card in self.hand_cards])
+        s += f'hand: {cards}\n'
         return s
     
     def copy(self):
@@ -165,7 +163,7 @@ class Action:
         if self.type == ActionType.skip:
             return self.type
         if self.type == ActionType.take: 
-            return self.type + ''.join([GEM_STR[g] for g in self.gems])
+            return f'{self.type}{self.gems}'
         elif self.type == ActionType.reserve or self.type == ActionType.purchase or self.type == ActionType.new_table_card:
             return f'{self.type}{self.level}n{self.pos}'
         elif self.type == ActionType.purchase_hand:
@@ -263,21 +261,15 @@ class SplendorGameState(GameState):
         return cp
 
     def __str__(self):
-        s = 'round: ' + str(self.round) + ' player to move: ' + str(self.active_player()) + '\n'
-        
-        s += 'nobles: '
-        for noble in self.nobles:
-            s += str(noble) + ' '
-        s += '\n'
+        s = f'round: {self.round} player to move: {self.active_player()}\n'
+        nobles = ' '.join([str(n) for n in self.nobles])
+        s += f'nobles: {nobles}\n'
 
         for n, card_list in enumerate(reversed(self.cards)):
-            s += str(CARD_LEVELS - n) + ': '
-            for card in card_list:
-                if card:
-                    s += str(card) + ' '
-            s += '\n'
+            cards = ' '.join([str(c) for c in card_list])
+            s += f"{CARD_LEVELS - n - 1}: {cards}\n"
 
-        s += 'gems: ' + str(self.gems) + '\n'
+        s += f'gems: {self.gems}\n'
 
         for player in self.players:
             s += str(player)

@@ -27,7 +27,7 @@ int main(int argc, char* argv[]) {
     if (argc < 2) {
         task_json = DEFAULT_TASK;
         std::cout << "Usage: " << argv[0] << " <input_json_file>\n";
-        std::cout << "Using default task configuration\n";
+        std::cout << "Using default configuration\n";
         
     } else {
         std::ifstream input_file(argv[1]);

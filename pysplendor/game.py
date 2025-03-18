@@ -1,6 +1,6 @@
 import json, random
 
-from .splendor import SplendorGameState, CHANCE_PLAYER
+from .splendor import SplendorGameState, Action, CHANCE_PLAYER
 
 
 class Trajectory():
@@ -13,13 +13,13 @@ class Trajectory():
     @classmethod
     def from_json(cls, data):
         initial_state = SplendorGameState.from_json(data['initial_state'])
-        actions = data['actions']
+        actions = [Action.from_str(a) for a in data['actions']]
         rewards = data['rewards']
         states = [SplendorGameState.from_json(s) for s in data['states']] if 'states' in data else []
         return cls(initial_state, actions, rewards, states)
     
 
-def traj_iter(file_name):
+def traj_loader(file_name):
     with open(file_name, 'rt') as fin:
         for line in fin:
             data = json.loads(line)
