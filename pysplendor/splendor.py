@@ -1,7 +1,7 @@
 import random, copy, csv, json
 from itertools import combinations
 
-from .game_state import GameState
+from .game_state import GameState, CHANCE_PLAYER
 
 GOLD_GEM = 5 # index of the gold gem
 NUM_GEMS = 6
@@ -213,7 +213,6 @@ class SplendorGameRules:
             self.max_gems = 2 + self.num_players
  
 DEFAULT_RULES = {n: SplendorGameRules(n) for n in range(2, 5)}
-CHANCE_PLAYER = -1
 
 class SplendorGameState(GameState):
     '''Knows game rules)'''
@@ -489,13 +488,18 @@ class SplendorGameState(GameState):
         if sum(player.gems) < self.rules.max_player_gems - self.rules.max_same_gems_take: 
             for gem in GEMS[:-1]:
                 if self.gems[gem] >= self.rules.min_same_gems_stack:
-                    actions.append(Action(action_type, [gem] * self.rules.max_same_gems_take))
+                    gems = GemSet()
+                    gems[gem] = self.rules.max_same_gems_take
+                    actions.append(Action(action_type, gems))
                     
         # three distinct gems
         if sum(player.gems) < self.rules.max_player_gems - self.rules.max_gems_take:
             available_gems = [g for g in GEMS[:-1] if self.gems[g] > 0]
             for comb_gems in combinations(available_gems, self.rules.max_gems_take):
-                actions.append(Action(action_type, comb_gems))
+                gems = GemSet()
+                for gem in comb_gems:
+                    gems[gem] = 1
+                actions.append(Action(action_type, gems))
 
         # 2. Reserve a card
         if len(player.hand_cards) < self.rules.max_hand_cards:

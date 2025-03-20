@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 from copy import deepcopy
 
+CHANCE_PLAYER = -1
+
 class GameState(ABC):
     @abstractmethod
     def get_actions(self):

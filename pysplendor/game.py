@@ -1,6 +1,7 @@
 import json, random
 
-from .splendor import SplendorGameState, Action, CHANCE_PLAYER
+from .game_state import CHANCE_PLAYER
+from .splendor import SplendorGameState, Action
 
 
 class Trajectory():

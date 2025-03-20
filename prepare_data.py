@@ -1,8 +1,9 @@
 import time
 import numpy as np
 
+from pysplendor.game_state import CHANCE_PLAYER
 from pysplendor.game import Trajectory, traj_loader
-from pysplendor.splendor import SplendorGameState, SplendorPlayerState, Action, GemSet, Card, Noble, NUM_GEMS, CARD_LEVELS, DEFAULT_RULES, CHANCE_PLAYER
+from pysplendor.splendor import SplendorGameState, SplendorPlayerState, Action, GemSet, Card, Noble, NUM_GEMS, CARD_LEVELS, DEFAULT_RULES
 
     
 # all possible actions that are avialable to players

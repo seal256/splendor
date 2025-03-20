@@ -74,7 +74,7 @@ def train_epoch(model, data_loader, optimizer, device):
         
         loss_action = F.cross_entropy(action_output, y_action_batch)
         loss_qval = F.mse_loss(qval_output.squeeze(), y_qval_batch)
-        loss = loss_action + loss_qval
+        loss = loss_action + 10.0 * loss_qval
         
         loss.backward()
         optimizer.step()
@@ -171,47 +171,7 @@ def train():
     print(f'Final model saved to {model_path}')
 
 
-def model_predict(model, state_encoder, state, K=5):
-    '''Retruns top K predicted actions and qvalue'''
-    state_vec = state_encoder.state_to_vec(state)
-    X = torch.tensor(state_vec, dtype=torch.float32)
-    logits, qval = model.forward(X)
-    top_actions = np.argsort(logits.detach().numpy())[-K:]
-    logits = logits[top_actions]
-    return top_actions, logits, qval.item()
 
-def run_model():
-    '''Aloows to inspect the moves predicted by the model'''
-    from prepare_data import SplendorGameStateEncoder, ALL_ACTIONS
-    from pysplendor.game import Trajectory, traj_loader
-    from pysplendor.splendor import Action, CHANCE_PLAYER
-    state_encoder = SplendorGameStateEncoder(2)
-    STATE_LEN = 1052
-    NUM_ACTIONS = 43
-
-    model = TwoHeadMLP(STATE_LEN, 50, NUM_ACTIONS)
-    model_path = './data/models/mlp_0.pth'
-    state_dict = torch.load(model_path)
-    model.load_state_dict(state_dict)
-    model.eval()
-
-    traj_file = './data/traj_dump_10k.txt'
-    loader = traj_loader(traj_file)
-    for _ in range(1100):
-        next(loader)
-    traj = next(loader) # pick one
-    state = traj.initial_state.copy()
-    rewards = traj.rewards
-
-    for action in traj.actions:
-        if state.active_player() != CHANCE_PLAYER: # ignore chance nodes
-            top_actions, logits, qval = model_predict(model, state_encoder, state, K=5)
-            print(state)
-            suggested_actions = ' '.join([f'{ALL_ACTIONS[a]} ({l:.2f})' for a, l in zip(top_actions, logits)])
-            print(f'predicted actions: {suggested_actions} qval: {qval:.3f} reward: {rewards[state.active_player()]}')
-            print(f'actual action: {action}\n')
-
-        state.apply_action(action)
 
 if __name__ == "__main__":
 
