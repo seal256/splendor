@@ -40,12 +40,12 @@ public:
 
     ActionT get_action(const std::shared_ptr<GameState<ActionT>>& game_state) const override {
         mcts::MCTS<ActionT> mcts(game_state, mcts_params);
-        auto start = std::chrono::high_resolution_clock::now();
+        // auto start = std::chrono::high_resolution_clock::now();
         
         ActionT action = mcts.search();
         
-        auto end = std::chrono::high_resolution_clock::now();
-        auto duration = static_cast<double>((std::chrono::duration_cast<std::chrono::milliseconds>(end - start)).count()) / 1000.0;
+        // auto end = std::chrono::high_resolution_clock::now();
+        // auto duration = static_cast<double>((std::chrono::duration_cast<std::chrono::milliseconds>(end - start)).count()) / 1000.0;
         // std::cout << "Elapsed: " << duration << " sec, Iterations per second: " << mcts_params.iterations / duration << "\n";
         
         return action;

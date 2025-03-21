@@ -1,10 +1,12 @@
 #pragma once
 
-#include<vector>
+#include <vector>
 #include <iostream>
 #include <memory>
 #include <cmath>
 #include <numeric>
+#include <future>
+#include <chrono>
 
 #include "agents.h"
 
@@ -62,6 +64,7 @@ class GameSeriesTask {
 public:
     std::vector<std::shared_ptr<Agent<ActionT>>> agents;
     int num_games;
+    int num_workers;
     unsigned int random_seed;
     bool verbose;
     bool save_states;
@@ -73,6 +76,7 @@ public:
         }
 
         num_games = jsn.at("num_games");
+        num_workers = jsn.value("num_workers", 1);
         dump_trajectories = jsn.value("dump_trajectories", "");
         random_seed = jsn.value("random_seed", 11); 
         verbose = jsn.value("verbose", false);
@@ -88,20 +92,45 @@ std::vector<Trajectory<ActionT>> run_games(const GameSeriesTask<ActionT>& task) 
     std::vector<Trajectory<ActionT>> trajectories;
     std::shared_ptr<Agent<ActionT>> random_agent = std::make_shared<RandomAgent<ActionT>>();
 
+    auto start = std::chrono::high_resolution_clock::now();
     for (int game_num = 0; game_num < task.num_games; ++game_num) {
-        auto start = std::chrono::high_resolution_clock::now();
 
         auto game_state = std::make_shared<GameStateT>(task.agents.size());
         Trajectory<ActionT> trajectory = run_one_game<ActionT>(game_state, task.agents, random_agent, task.verbose, task.save_states);
         trajectories.push_back(trajectory);
 
-        auto end = std::chrono::high_resolution_clock::now();
-        auto duration = static_cast<double>((std::chrono::duration_cast<std::chrono::milliseconds>(end - start)).count()) / 1000.0;
         std::cout << "Game " << game_num << " of " << task.num_games 
-            << " took: " << duration << " sec " 
             << " actions: " << trajectory.actions.size()
             << "\n";
     }
+    
+    auto end = std::chrono::high_resolution_clock::now();
+    auto duration = static_cast<double>((std::chrono::duration_cast<std::chrono::milliseconds>(end - start)).count()) / 1000.0;
+    std::cout << "Took: "<< duration << " sec, " << duration / task.num_games << " seconds per game\n";
 
     return trajectories;
+}
+
+template<typename GameStateT, typename ActionT>
+std::vector<Trajectory<ActionT>> run_games_parallel(const GameSeriesTask<ActionT>& task) {
+    // this implementation is suboptimal, but simple
+    std::vector<Trajectory<ActionT>> all_trajectories;
+    all_trajectories.reserve(task.num_games);
+    std::vector<std::future<std::vector<Trajectory<ActionT>>>> futures;
+
+    int num_workers = task.num_workers;
+    GameSeriesTask<ActionT> subtask = task;
+    subtask.num_games = task.num_games / num_workers;
+
+    for (int i = 0; i < num_workers; ++i) {
+        futures.push_back(std::async(std::launch::async, [subtask]() {
+            return run_games<GameStateT, ActionT>(subtask);
+        }));
+    }
+    for (auto& future : futures) {
+        auto worker_trajectories = future.get();
+        all_trajectories.insert(all_trajectories.end(), worker_trajectories.begin(), worker_trajectories.end());
+    }
+
+    return all_trajectories;
 }

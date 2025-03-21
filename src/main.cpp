@@ -43,7 +43,8 @@ int main(int argc, char* argv[]) {
     }
 
     GameSeriesTask<Action> task(task_json);
-    std::vector<Trajectory<Action>> trajectories = run_games<SplendorGameState, Action>(task);
+    std::vector<Trajectory<Action>> trajectories = task.num_workers > 1 ? 
+        run_games_parallel<SplendorGameState, Action>(task) : run_games<SplendorGameState, Action>(task);
     
     splendor_stats(trajectories);
     if (!task.dump_trajectories.empty()) {
