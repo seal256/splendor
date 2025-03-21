@@ -37,7 +37,7 @@ private:
     const std::shared_ptr<GameState<ActionT>> root_state;
     std::shared_ptr<Node<ActionT>> root;
     MCTSParams params;
-    
+
 public:
     MCTS(const std::shared_ptr<GameState<ActionT>> & state, const MCTSParams & params = MCTSParams())
         : root_state(state->clone()), params(params) {
@@ -76,7 +76,7 @@ public:
             }
             std::random_shuffle(node->children.begin(), node->children.end()); // Optional step
             if (!node->children.empty()) {
-                node = node->children[0]; // Assumes that the children are shuffled. Otherwize children[rand() % node->children.size()]
+                node = node->children[0]; // Assumes that the children are shuffled. Otherwize pick random index
                 state->apply_action(node->action);
             }
         }
@@ -156,7 +156,8 @@ private:
         // Simulates a random playout from the given state
         while (!state->is_terminal()) {
             auto actions = state->get_actions();
-            if (actions.empty()) break;
+            if (actions.empty()) 
+                break;
             int random_idx = rand() % actions.size();
             state->apply_action(actions[random_idx]);
         }

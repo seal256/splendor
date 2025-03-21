@@ -17,7 +17,7 @@ struct Trajectory {
 };
 
 template<typename ActionT>
-Trajectory<ActionT> run_one_game(std::shared_ptr<GameState<ActionT>> game_state, const std::vector<std::shared_ptr<Agent<ActionT>>>& agents, bool verbose=false, bool save_states=false) {
+Trajectory<ActionT> run_one_game(std::shared_ptr<GameState<ActionT>> game_state, const std::vector<std::shared_ptr<Agent<ActionT>>>& agents, const std::shared_ptr<Agent<ActionT>> random_agent, bool verbose=false, bool save_states=false) {
     Trajectory<ActionT> trajectory;
     trajectory.initial_state = game_state->clone();
 
@@ -25,9 +25,7 @@ Trajectory<ActionT> run_one_game(std::shared_ptr<GameState<ActionT>> game_state,
     while (!game_state->is_terminal()) {
         ActionT action;
         if (active_player == CHANCE_PLAYER) { // chance game state
-            auto legal_actions = game_state->get_actions();
-            int idx = std::rand() % legal_actions.size();
-            action = legal_actions[idx];
+            action = random_agent->get_action(game_state);
 
         } else {
             action = agents[active_player]->get_action(game_state);
@@ -64,6 +62,7 @@ class GameSeriesTask {
 public:
     std::vector<std::shared_ptr<Agent<ActionT>>> agents;
     int num_games;
+    unsigned int random_seed;
     bool verbose;
     bool save_states;
     std::string dump_trajectories;
@@ -74,10 +73,11 @@ public:
         }
 
         num_games = jsn.at("num_games");
-        dump_trajectories = jsn.contains("dump_trajectories") ? jsn.at("dump_trajectories") : "";
+        dump_trajectories = jsn.value("dump_trajectories", "");
+        random_seed = jsn.value("random_seed", 11); 
         verbose = jsn.value("verbose", false);
         save_states = jsn.value("save_states", false); 
-        for (const auto& player_config : jsn["agents"]) {
+        for (const auto& player_config : jsn.at("agents")) {
             agents.push_back(construct_agent<ActionT>(player_config));
         }
     }
@@ -86,12 +86,13 @@ public:
 template<typename GameStateT, typename ActionT>
 std::vector<Trajectory<ActionT>> run_games(const GameSeriesTask<ActionT>& task) {
     std::vector<Trajectory<ActionT>> trajectories;
+    std::shared_ptr<Agent<ActionT>> random_agent = std::make_shared<RandomAgent<ActionT>>();
 
     for (int game_num = 0; game_num < task.num_games; ++game_num) {
         auto start = std::chrono::high_resolution_clock::now();
 
         auto game_state = std::make_shared<GameStateT>(task.agents.size());
-        Trajectory<ActionT> trajectory = run_one_game<ActionT>(game_state, task.agents, task.verbose, task.save_states);
+        Trajectory<ActionT> trajectory = run_one_game<ActionT>(game_state, task.agents, random_agent, task.verbose, task.save_states);
         trajectories.push_back(trajectory);
 
         auto end = std::chrono::high_resolution_clock::now();

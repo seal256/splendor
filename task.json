@@ -11,7 +11,8 @@
             "exploration": 1.4
         }
     ],
-    "num_games": 10000,
+    "num_games": 100,
+    "ranodom_seed": 1829,
     "verbose": false,
-    "dump_trajectories": "data/traj_dump.txt"
+    "dump_trajectories": "data/traj_dump_1.txt"
 }

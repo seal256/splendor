@@ -18,7 +18,8 @@ const json DEFAULT_TASK = {
         {{"type", "MCTSAgent"}, {"iterations", 1000}, {"exploration", 1.4}}
     }},
     {"num_games", 1},
-    {"verbose", true}
+    {"verbose", true},
+    {"random_seed", 11}
 };
 
 int main(int argc, char* argv[]) {
