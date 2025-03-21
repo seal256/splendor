@@ -477,9 +477,6 @@ class SplendorGameState(GameState):
         
         actions = []
 
-        # 0. skip the move
-        actions.append(Action(ActionType.skip))
-
         player: SplendorPlayerState = self.players[self.player_to_move]
 
         # 1. Take new gems
@@ -523,6 +520,10 @@ class SplendorGameState(GameState):
                 if self._player_can_afford_card(player, card):
                     actions.append(Action(action_type, pos=pos))
 
+        # 0. skip the move
+        if not actions:
+            actions.append(Action(ActionType.skip))
+
         return actions
 
     def active_player(self):
@@ -531,26 +532,39 @@ class SplendorGameState(GameState):
         return self.player_to_move
 
     def is_terminal(self):
-        # the game stops if all players skipped the move in the current round
+        # The game stops if all players skipped the move in the current round
         if self.skips >= len(self.players):
             return True
-        
-        # or one of them got the required number of win points
-        for player in self.players:
-            if player.points >= self.rules.win_points:
-                return True
-        
+
+        # Or one of them got the required number of win points, but only after ensuring all players have had equal turns
+        if self.player_to_move == 0:  # Ensures all players have had equal turns
+            for player in self.players:
+                if player.points >= self.rules.win_points:
+                    return True
+
         return False
 
     def rewards(self):
-        '''Returns the number of win points for each player'''
-        # return [player.points for player in self.players]
-        return [1.0 if player.points >= self.rules.win_points else 0.0 for player in self.players]
+        winner_id = self.get_winner_id()
+        return [1.0 if player.id == winner_id else 0.0 for player in self.players]
 
-    def best_player(self):
-        '''Returns name of best player'''
-        scores = [(player.points, player.name) for player in self.players]
-        return sorted(scores, reverse=True)[0]
+    def get_winners(self):
+        max_points = max([p.points for p in self.players])
+        if max_points < self.rules.win_points: # no winners
+            return []
+        
+        candidate_ids = [player.id for player in self.players if player.points >= max_points]
+
+        # If there's only one candidate, they are the winner
+        if len(candidate_ids) <= 1:
+            return candidate_ids
+
+        # In case of a tie, the player with the fewest development cards wins
+        card_counts = [sum(self.players[player_id].card_gems) for player_id in candidate_ids] # Sum of all card gems represents the number of development cards
+        min_cards = min(card_counts)
+        winners = [id for id in candidate_ids if card_counts[id] <= min_cards] # there still may be a tie though
+
+        return winners
 
 if __name__ == '__main__':
     print_cards()

@@ -14,10 +14,10 @@ using splendor::SplendorGameState;
 
 const json DEFAULT_TASK = {
     {"agents", {
-        {{"type", "RandomAgent"}},
+        {{"type", "MCTSAgent"}, {"iterations", 1000}, {"exploration", 1.4}},
         {{"type", "MCTSAgent"}, {"iterations", 1000}, {"exploration", 1.4}}
     }},
-    {"num_games", 1},
+    {"num_games", 5},
     {"verbose", true}
 };
 

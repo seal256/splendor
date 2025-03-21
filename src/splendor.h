@@ -139,6 +139,7 @@ private:
     bool _player_can_afford_card(const SplendorPlayerState& player, const Card& card) const;
     void _purchase_card(SplendorPlayerState& player, const Card& card);
     void _get_noble(SplendorPlayerState& player);
+    std::vector<int> _get_winners() const;
 };
 
 std::ostream& operator<<(std::ostream& os, const SplendorGameState& state);

@@ -289,9 +289,6 @@ std::vector<Action> SplendorGameState::get_actions() const {
         return actions;
     }
 
-    // 0. Skip the move
-    actions.push_back(Action(ActionType::SKIP));
-
     const SplendorPlayerState& player = players[player_to_move];
 
     // 1. Take new gems
@@ -369,6 +366,11 @@ std::vector<Action> SplendorGameState::get_actions() const {
                 actions.push_back(Action(action_type, pos));
             }
         }
+    }
+
+    // 0. Skip the move
+    if (actions.empty()) {
+        actions.push_back(Action(ActionType::SKIP));
     }
 
     return actions;
@@ -523,21 +525,67 @@ bool SplendorGameState::is_terminal() const {
     }
 
     // Or one of them got the required number of win points
-    for (const auto& player : players) {
-        if (player.points >= rules->win_points) {
-            return true;
+    if (this->active_player() == 0) { // ensures that all players made equal number of moves
+        for (const auto& player : players) {
+            if (player.points >= rules->win_points) {
+                return true;
+            }
         }
     }
 
     return false;
 }
 
-std::vector<double> SplendorGameState::rewards() const {
-    std::vector<double> rewards;
-    rewards.reserve(players.size());
+std::vector<int> SplendorGameState::_get_winners() const {
+    std::vector<int> candidate_ids;
+    int max_points = -1;
+    for (const auto& player : players) {
+        if (player.points > max_points)
+            max_points = player.points;
+    }
+
+    // no winner
+    if (max_points < rules->win_points) {
+        return candidate_ids;
+    }
 
     for (const auto& player : players) {
-        rewards.push_back(player.points >= rules->win_points ? 1.0 : 0.0);
+        if (player.points >= max_points) {
+            candidate_ids.push_back(player.id);
+        }
+    }
+
+    // If there's only one candidate, they are the winner
+    if (candidate_ids.size() <= 1) {
+        return candidate_ids;
+    }
+
+    // In case of a tie, the player with the fewest development cards wins
+    int min_cards = 1000;
+    for (int id : candidate_ids) {
+        int num_cards = players[id].card_gems.sum(); // Sum of all card gems represents the number of development cards
+        if (num_cards < min_cards) {
+            min_cards = num_cards;
+        }
+    }
+
+    // there still may be a tie
+    std::vector<int> winner_ids;
+    for (int id : candidate_ids) {
+        int num_cards = players[id].card_gems.sum();
+        if (num_cards <= min_cards) {
+            winner_ids.push_back(id);
+        }
+    }
+
+    return winner_ids;
+}
+
+std::vector<double> SplendorGameState::rewards() const {
+    std::vector<double> rewards(players.size(), 0.0);
+    std::vector<int> winner_ids = _get_winners();
+    for (int id : winner_ids) {
+        rewards[id] = 1.0 / winner_ids.size();
     }
 
     return rewards;
