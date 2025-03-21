@@ -13,4 +13,5 @@ cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE ..
 cmake --build .
 
 cd ..
+rm ./splendor
 cp ./bin/splendor .

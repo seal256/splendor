@@ -18,8 +18,7 @@ const json DEFAULT_TASK = {
         {{"type", "MCTSAgent"}, {"iterations", 1000}, {"exploration", 1.4}}
     }},
     {"num_games", 1},
-    {"verbose", true},
-    {"random_seed", 11}
+    {"verbose", true}
 };
 
 int main(int argc, char* argv[]) {
@@ -37,6 +36,10 @@ int main(int argc, char* argv[]) {
             return 1;
         }
         input_file >> task_json;
+    }
+    if (task_json.contains("random_seed")) {
+        unsigned int seed = task_json.at("random_seed");
+        std::srand(seed);
     }
 
     GameSeriesTask<Action> task(task_json);

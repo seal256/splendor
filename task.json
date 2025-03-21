@@ -11,8 +11,8 @@
             "exploration": 1.4
         }
     ],
-    "num_games": 100,
-    "ranodom_seed": 1829,
+    "num_games": 10,
+    "random_seed": 1829,
     "verbose": false,
-    "dump_trajectories": "data/traj_dump_1.txt"
+    "dump_trajectories": "data/traj_dump_2.txt"
 }
