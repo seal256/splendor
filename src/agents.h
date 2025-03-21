@@ -53,6 +53,23 @@ public:
 };
 
 template<typename ActionT>
+class PolicyMCTSAgent : public Agent<ActionT> {
+private:
+    mcts::MCTSParams mcts_params;
+
+public:
+    PolicyMCTSAgent(const mcts::MCTSParams& params = mcts::MCTSParams()) : mcts_params(params) {}
+
+    ActionT get_action(const std::shared_ptr<GameState<ActionT>>& game_state) const override {
+        mcts::MCTS<ActionT> mcts(game_state, mcts_params);
+        ActionT action = mcts.search();
+        
+        return action;
+    }
+};
+
+
+template<typename ActionT>
 std::shared_ptr<Agent<ActionT>> construct_agent(const json& jsn) {
     if (!jsn.contains("type")) {
         throw std::runtime_error("JSON configuration must contain a 'type' field.");
@@ -71,6 +88,16 @@ std::shared_ptr<Agent<ActionT>> construct_agent(const json& jsn) {
             params.exploration = jsn["exploration"];
         }
         return std::make_shared<MCTSAgent<ActionT>>(params);
+
+    } else if (agent_type == "PolicyMCTSAgent") {
+        mcts::MCTSParams params;
+        if (jsn.contains("iterations")) {
+            params.iterations = jsn["iterations"];
+        }
+        if (jsn.contains("exploration")) {
+            params.exploration = jsn["exploration"];
+        }
+        return std::make_shared<PolicyMCTSAgent<ActionT>>(params);
 
     } else {
         throw std::runtime_error("Unknown agent type: " + agent_type);

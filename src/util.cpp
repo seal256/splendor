@@ -57,9 +57,12 @@ void splendor_stats(const std::vector<Trajectory<Action>>& trajectories) {
 
     for (int player = 0; player < num_players; ++player) {
         auto cards_avg_dev = avg_dev(card_counts[player]);
+        double mean_score = total_scores[player] / num_games;
+        double conf_interval = 2.58 * std::sqrt(mean_score * (1.0 - mean_score) / num_games); // 99% confidence
         std::cout << "player " << player << ":" 
             << " total score: " << total_scores[player]
-            << " mean score: " << total_scores[player] / num_games
+            << " mean score: " << mean_score
+            << " score conf interval: " << conf_interval
             << " cards mean: " << cards_avg_dev.first
             << " cards std dev: " << cards_avg_dev.second
             << "\n";
