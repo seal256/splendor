@@ -166,36 +166,26 @@ private:
 
 };
 
-
-// template<typename GameStateT>
-// class Policy {
-// public:
-//     virtual std::vector<double> predict(const GameStateT& game_state) = 0;
-//     virtual ~Policy() {};
-// };
-
+template<typename ActionT>
+class Policy {
+public:
+    virtual std::vector<double> predict(const std::shared_ptr<GameState<ActionT>> game_state) = 0;
+    virtual ~Policy() {};
+};
 
 template<typename ActionT>
 class PolicyMCTS {
 private:
     const std::shared_ptr<GameState<ActionT>> root_state;
     std::shared_ptr<Node<ActionT>> root;
+    const std::shared_ptr<Policy<ActionT>> policy;
     MCTSParams params;
-    const std::vector<double> probs = {0.0034,0.0064,0.0039,0.0033,0.0044,0.0042,0.0293,0.0329,0.0352,0.0330,0.0327,0.0370,0.0239,0.0235,0.0285,0.0286,0.0215,0.0189,0.0214,0.0220,0.0136,0.0134,0.0150,0.0168,0.0101,0.0102,0.0108,0.0143,0.0512,0.0572,0.0647,0.0846,0.0238,0.0238,0.0250,0.0285,0.0047,0.0057,0.0059,0.0068,0.0404,0.0355,0.0240};
-    const std::vector<std::string> actions = {"s","tr2","tg2","tb2","tw2","tk2","tr1g1b1","tr1g1w1","tr1g1k1","tr1b1w1","tr1b1k1","tr1w1k1","tg1b1w1","tg1b1k1","tg1w1k1","tb1w1k1",
-               "r0n0","r0n1","r0n2","r0n3","r1n0","r1n1","r1n2","r1n3","r2n0","r2n1","r2n2","r2n3",
-               "p0n0","p0n1","p0n2","p0n3","p1n0","p1n1","p1n2","p1n3","p2n0","p2n1","p2n2","p2n3",
-               "h0","h1","h2"};
-    std::unordered_map<std::string, size_t> action_id;
-
+    
 public:
-    PolicyMCTS(const std::shared_ptr<GameState<ActionT>> & state, const MCTSParams & params = MCTSParams())
-        : root_state(state->clone()), params(params) {
+    PolicyMCTS(const std::shared_ptr<GameState<ActionT>> & state, const std::shared_ptr<Policy<ActionT>>& policy, const MCTSParams & params = MCTSParams())
+        : root_state(state->clone()), policy(policy), params(params) {
         root = std::make_shared<Node<ActionT>>();
-        root->active_player = root_state->active_player();
-        for (size_t id = 0; id < actions.size(); id++) {
-            action_id[actions[id]] = id;
-        }
+        root->active_player = root_state->active_player();        
     }
 
     ActionT search() {
@@ -217,14 +207,19 @@ public:
 
         // Expansion
         if (!state->is_terminal() && node->children.empty() && node->visits > 0) {
-            for (const auto& action : state->get_actions()) {
-                auto child_node = std::make_shared<Node<ActionT>>(action, node.get(), state->active_player());
-                child_node->p = probs[action_id[action.to_str()]];
+            const std::vector<ActionT> actions = state->get_actions(); 
+            const std::vector<double> probs = state->active_player() == CHANCE_PLAYER ?
+                std::vector<double>(actions.size(), 1.0) : policy->predict(state); 
+            for (size_t id = 0; id < actions.size(); id++) { // assumes that get_actions orders actions consistently
+                auto child_node = std::make_shared<Node<ActionT>>(actions[id], node.get(), state->active_player());
+                child_node->p = probs[id];
                 node->children.emplace_back(child_node);
             }
-            std::random_shuffle(node->children.begin(), node->children.end()); // Optional step
+            if (state->active_player() == CHANCE_PLAYER) {
+                std::random_shuffle(node->children.begin(), node->children.end()); // Optional step
+            }
             if (!node->children.empty()) {
-                node = _select_child(node); // Assumes that the children are shuffled. Otherwize pick random index
+                node = _select_child(node);
                 state->apply_action(node->action);
             }
         }
@@ -277,20 +272,13 @@ public:
 
 private:
     std::shared_ptr<Node<ActionT>> _select_child(const std::shared_ptr<Node<ActionT>>& node) {
-        // // Use the first unexplored child, assuming the children array is shuffled
-        // for (const auto& child : node->children) {
-        //     if (child->visits == 0) {
-        //         return child; 
-        //     }
-        // }
-
-        // Find the max UCB child
-        double max_ucb = -std::numeric_limits<double>::infinity(); // could use 0, but just in case of negative rewards
+       // Find the max UCB child
+        double max_ucb = 0;
         std::shared_ptr<Node<ActionT>> best_child = nullptr;
-        double log_parent_visits = std::log(node->visits + 1);
+        double parent_visits_sqrts = std::sqrt(node->visits);
         for (const auto& child : node->children) {
-            double exploitation_term = child->wins / (child->visits + 1);
-            double exploration_term = child.p * std::sqrt(log_parent_visits / (child->visits + 1));
+            double exploitation_term = child->visits > 0 ? child->wins / child->visits : 0;
+            double exploration_term = child->p * parent_visits_sqrts / (child->visits + 1);
             double ucb = exploitation_term + params.exploration * exploration_term;
             if (ucb > max_ucb) {
                 max_ucb = ucb;
@@ -313,9 +301,5 @@ private:
     }
 
 };
-
-
-
-
 
 }; // namespace mcts

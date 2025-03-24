@@ -545,8 +545,10 @@ class SplendorGameState(GameState):
         return False
 
     def rewards(self):
-        winner_id = self.get_winner_id()
-        return [1.0 if player.id == winner_id else 0.0 for player in self.players]
+        scores = [0.0] * len(self.players)
+        for id in self.get_winners():
+            scores[id] = 1.0
+        return scores
 
     def get_winners(self):
         max_points = max([p.points for p in self.players])

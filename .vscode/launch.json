@@ -6,7 +6,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/splendor",
-            "args": [],
+            "args": ["/Users/seal/projects/splendor/task.json"],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
             "environment": [],

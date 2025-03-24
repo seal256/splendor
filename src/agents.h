@@ -3,9 +3,6 @@
 #include <memory>
 #include <stdexcept>
 
-#include "json.hpp"
-using json = nlohmann::json;
-
 #include "game_state.h"
 #include "mcts.h"
 
@@ -53,54 +50,51 @@ public:
 };
 
 template<typename ActionT>
+class ConstantPolicy : public mcts::Policy<ActionT> {
+    // Uses constant probabiltiy distribution independent from the state
+    const std::vector<double> probs;
+    const std::unordered_map<std::string, size_t> action_ids;
+public:
+    ConstantPolicy(const std::vector<double>& probs, const std::unordered_map<std::string, size_t>& action_ids) : probs(probs), action_ids(action_ids) {}
+   
+    std::vector<double> predict(const std::shared_ptr<GameState<ActionT>> game_state) override {
+        const std::vector<ActionT> actions = game_state->get_actions();
+        std::vector<double> action_probs;
+        action_probs.reserve(actions.size());
+        double sum_probs = 0.0;
+        for (const ActionT& action : actions) {
+            const std::string action_str = action.to_str();
+            const auto action_id = action_ids.find(action_str);
+            if (action_id == action_ids.end()) {
+                throw std::invalid_argument("Unknown action string " + action_str);
+            }
+            double p = probs[action_id->second];
+            sum_probs += p;
+            action_probs.push_back(p);
+        }
+        for (double& p : action_probs) {
+            p /= sum_probs;
+        }
+        return action_probs;
+    }
+    ~ConstantPolicy() override {};
+};
+
+template<typename ActionT>
 class PolicyMCTSAgent : public Agent<ActionT> {
 private:
+    const std::shared_ptr<mcts::Policy<ActionT>> policy;
     mcts::MCTSParams mcts_params;
 
 public:
-    PolicyMCTSAgent(const mcts::MCTSParams& params = mcts::MCTSParams()) : mcts_params(params) {}
+    PolicyMCTSAgent(const std::shared_ptr<mcts::Policy<ActionT>>& policy, const mcts::MCTSParams& params = mcts::MCTSParams()) : policy(policy), mcts_params(params) {}
 
     ActionT get_action(const std::shared_ptr<GameState<ActionT>>& game_state) const override {
-        mcts::MCTS<ActionT> mcts(game_state, mcts_params);
+        mcts::PolicyMCTS<ActionT> mcts(game_state, policy, mcts_params);
         ActionT action = mcts.search();
         
         return action;
     }
 };
 
-
-template<typename ActionT>
-std::shared_ptr<Agent<ActionT>> construct_agent(const json& jsn) {
-    if (!jsn.contains("type")) {
-        throw std::runtime_error("JSON configuration must contain a 'type' field.");
-    }
-    std::string agent_type = jsn["type"];
-
-    if (agent_type == "RandomAgent") {
-        return std::make_shared<RandomAgent<ActionT>>();
-
-    } else if (agent_type == "MCTSAgent") {
-        mcts::MCTSParams params;
-        if (jsn.contains("iterations")) {
-            params.iterations = jsn["iterations"];
-        }
-        if (jsn.contains("exploration")) {
-            params.exploration = jsn["exploration"];
-        }
-        return std::make_shared<MCTSAgent<ActionT>>(params);
-
-    } else if (agent_type == "PolicyMCTSAgent") {
-        mcts::MCTSParams params;
-        if (jsn.contains("iterations")) {
-            params.iterations = jsn["iterations"];
-        }
-        if (jsn.contains("exploration")) {
-            params.exploration = jsn["exploration"];
-        }
-        return std::make_shared<PolicyMCTSAgent<ActionT>>(params);
-
-    } else {
-        throw std::runtime_error("Unknown agent type: " + agent_type);
-    }
-}
 

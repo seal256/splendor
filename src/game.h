@@ -8,7 +8,7 @@
 #include <future>
 #include <chrono>
 
-#include "agents.h"
+#include "splendor_agents.h"
 
 template<typename ActionT>
 struct Trajectory {
@@ -82,7 +82,7 @@ public:
         verbose = jsn.value("verbose", false);
         save_states = jsn.value("save_states", false); 
         for (const auto& player_config : jsn.at("agents")) {
-            agents.push_back(construct_agent<ActionT>(player_config));
+            agents.push_back(construct_agent(player_config));
         }
     }
 };
