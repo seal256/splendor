@@ -72,7 +72,7 @@ public:
         if (!state->is_terminal() && node->children.empty() && node->visits > 0) {
             for (const auto& action : state->get_actions()) {
                 auto child_node = std::make_shared<Node<ActionT>>(action, node.get(), state->active_player());
-                node->children.emplace_back(child_node);
+                node->children.push_back(child_node);
             }
             std::random_shuffle(node->children.begin(), node->children.end()); // Optional step
             if (!node->children.empty()) {
@@ -106,6 +106,16 @@ public:
                 return a->visits < b->visits;
             });
         return (*best_child)->action;
+    }
+
+    std::vector<std::pair<ActionT, int>> root_visits() const {
+        // Helper function that returns children visits at the root state
+        std::vector<std::pair<ActionT, int>> visits;
+        visits.reserve(root->children.size());
+        for (const auto& child : root->children) {
+            visits.emplace_back(child->action, child->visits);
+        }
+        return visits;
     }
 
     void apply_action(const ActionT& action) {
@@ -213,7 +223,7 @@ public:
             for (size_t id = 0; id < actions.size(); id++) { // assumes that get_actions orders actions consistently
                 auto child_node = std::make_shared<Node<ActionT>>(actions[id], node.get(), state->active_player());
                 child_node->p = probs[id];
-                node->children.emplace_back(child_node);
+                node->children.push_back(child_node);
             }
             if (state->active_player() == CHANCE_PLAYER) {
                 std::random_shuffle(node->children.begin(), node->children.end()); // Optional step
@@ -273,7 +283,7 @@ public:
 private:
     std::shared_ptr<Node<ActionT>> _select_child(const std::shared_ptr<Node<ActionT>>& node) {
        // Find the max UCB child
-        double max_ucb = 0;
+        double max_ucb = -1;
         std::shared_ptr<Node<ActionT>> best_child = nullptr;
         double parent_visits_sqrts = std::sqrt(node->visits);
         for (const auto& child : node->children) {
@@ -284,6 +294,9 @@ private:
                 max_ucb = ucb;
                 best_child = child;
             }
+        }
+        if (best_child == nullptr) {
+            throw std::runtime_error("Unable to find best child!");
         }
         return best_child;
     }

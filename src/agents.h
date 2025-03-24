@@ -72,6 +72,9 @@ public:
             sum_probs += p;
             action_probs.push_back(p);
         }
+        if (sum_probs <= 0.0) {
+            sum_probs = 1; 
+        }
         for (double& p : action_probs) {
             p /= sum_probs;
         }
