@@ -2,39 +2,39 @@
 
 using splendor::Action;
 
-class CheatMCTSAgent : public Agent<Action> {
-private:
-    mcts::MCTSParams mcts_params;
+// class CheatMCTSAgent : public Agent<Action> {
+// private:
+//     mcts::MCTSParams mcts_params;
 
-public:
-    CheatMCTSAgent(const mcts::MCTSParams& params = mcts::MCTSParams()) : mcts_params(params) {}
+// public:
+//     CheatMCTSAgent(const mcts::MCTSParams& params = mcts::MCTSParams()) : mcts_params(params) {}
 
-    Action get_action(const std::shared_ptr<GameState<Action>>& game_state) const override {
-        std::vector<double> probs(splendor::ACTION_ID.size(), 1);
-        if (game_state->active_player() != CHANCE_PLAYER) {
-            mcts::MCTS<Action> mcts(game_state, mcts_params);
-            mcts.search();
+//     Action get_action(const std::shared_ptr<GameState<Action>>& game_state) const override {
+//         std::vector<double> probs(splendor::ACTION_ID.size(), 1);
+//         if (game_state->active_player() != CHANCE_PLAYER) {
+//             mcts::MCTS<Action> mcts(game_state, mcts_params);
+//             mcts.search();
 
-            double count_sum = 0.0;
-            const auto root_visits = mcts.root_visits();
-            for (const auto& pr : root_visits) {
-                probs[splendor::ACTION_ID.at(pr.first.to_str())] = pr.second;
-                count_sum += pr.second;
-            }
-            count_sum += (splendor::ACTION_ID.size() - root_visits.size());
+//             double count_sum = 0.0;
+//             const auto root_visits = mcts.root_visits();
+//             for (const auto& pr : root_visits) {
+//                 probs[splendor::ACTION_ID.at(pr.first.to_str())] = pr.second;
+//                 count_sum += pr.second;
+//             }
+//             count_sum += (splendor::ACTION_ID.size() - root_visits.size());
 
-            for (auto& p: probs) {
-                p /= count_sum;
-            }            
-        }
-        std::shared_ptr<mcts::Policy<Action>> policy = std::make_shared<ConstantPolicy<Action>>(probs, splendor::ACTION_ID);
+//             for (auto& p: probs) {
+//                 p /= count_sum;
+//             }            
+//         }
+//         std::shared_ptr<mcts::Policy<Action>> policy = std::make_shared<ConstantPolicy<Action>>(probs, splendor::ACTION_ID);
         
-        mcts::PolicyMCTS<Action> policy_mcts(game_state, policy, mcts_params);
-        Action action = policy_mcts.search();
+//         mcts::PolicyMCTS<Action> policy_mcts(game_state, policy, mcts_params);
+//         Action action = policy_mcts.search();
         
-        return action;
-    }
-};
+//         return action;
+//     }
+// };
 
 
 mcts::MCTSParams parse_mcts_params(const json& jsn) {
@@ -67,9 +67,9 @@ std::shared_ptr<Agent<Action>> construct_agent(const json& jsn) {
         std::shared_ptr<mcts::Policy<Action>> policy = std::make_shared<ConstantPolicy<Action>>(probs, splendor::ACTION_ID);
         return std::make_shared<PolicyMCTSAgent<Action>>(policy, params);
 
-    } else if (agent_type == "CheatMCTSAgent") {
-        mcts::MCTSParams params = parse_mcts_params(jsn);
-        return std::make_shared<CheatMCTSAgent>(params);
+    // } else if (agent_type == "CheatMCTSAgent") {
+    //     mcts::MCTSParams params = parse_mcts_params(jsn);
+    //     return std::make_shared<CheatMCTSAgent>(params);
 
     } else {
         throw std::runtime_error("Unknown agent type: " + agent_type);

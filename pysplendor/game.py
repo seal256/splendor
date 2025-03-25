@@ -5,11 +5,12 @@ from .splendor import SplendorGameState, Action
 
 
 class Trajectory():
-    def __init__(self, initial_state, actions, rewards, states=[]):
+    def __init__(self, initial_state, actions, rewards, states=[], freqs=[]):
         self.initial_state = initial_state
         self.actions = actions # serialized to strings
         self.rewards = rewards
         self.states = states # for debug only, usually empty
+        self.freqs = freqs
 
     @classmethod
     def from_json(cls, data):
@@ -17,7 +18,8 @@ class Trajectory():
         actions = [Action.from_str(a) for a in data['actions']]
         rewards = data['rewards']
         states = [SplendorGameState.from_json(s) for s in data['states']] if 'states' in data else []
-        return cls(initial_state, actions, rewards, states)
+        freqs = data['freqs']
+        return cls(initial_state, actions, rewards, states, freqs)
     
 
 def traj_loader(file_name):

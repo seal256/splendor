@@ -53,7 +53,7 @@ class SplendorGameStateEncoder:
         for n, card in enumerate(player.hand_cards):
             hand_cards[n * self.card_vec_len: (n+1) * self.card_vec_len] = self.card_to_vec(card)
         points = [0] * (self.rules.win_points + 1)
-        points[player.points] = 1
+        points[min(player.points, self.rules.win_points)] = 1
         
         return card_gems + table_gems + hand_cards + points
 
@@ -94,12 +94,20 @@ def prepare_data(traj_file, data_fname_prefix, num_players = 2):
     num_traj = 0
     for traj in traj_loader(traj_file):
         state = traj.initial_state.copy()
-        for action in traj.actions:
+        for action_num in range(len(traj.actions)):
+            action = traj.actions[action_num]
             if state.active_player() != CHANCE_PLAYER: # ignore chance nodes
                 state_vec = state_encoder.state_to_vec(state)
                 states.append(np.packbits(state_vec)) # compressed bytes
-                actions.append(ACTION_ID[str(action)]) # ints
+                # actions.append(ACTION_ID[str(action)]) # ints
                 rewards.append(traj.rewards[state.active_player()]) # 0 or 1 
+                if traj.freqs:
+                    freq_vec = [0.0] * len(ACTION_ID)
+                    sum_count = sum([c for c in traj.freqs[action_num].values()])
+                    for action_str, count in traj.freqs[action_num].items():
+                        freq_vec[ACTION_ID[action_str]] = count / sum_count                    
+                    actions.append(freq_vec) # probability distribution over all actions
+                
                 num_states += 1
 
             state.apply_action(action)
@@ -107,8 +115,8 @@ def prepare_data(traj_file, data_fname_prefix, num_players = 2):
         num_traj += 1
 
     np.save(data_fname_prefix + "_states.npy", np.array(states))
-    np.save(data_fname_prefix + "_actions.npy", np.array(actions, dtype=np.uint8))
-    np.save(data_fname_prefix + "_rewards.npy", np.array(rewards, dtype=np.uint8))
+    np.save(data_fname_prefix + "_actions.npy", np.array(actions, dtype=np.float32))
+    np.save(data_fname_prefix + "_rewards.npy", np.array(rewards, dtype=np.float32))
 
     elapsed = time.perf_counter() - start
     print(f'Processed {num_traj} trajectories, {num_states} states in {elapsed:.2f} sec, {num_traj/elapsed:.2f} traj/sec')
@@ -116,4 +124,5 @@ def prepare_data(traj_file, data_fname_prefix, num_players = 2):
 
 if __name__ == '__main__':
     # print(len(ALL_ACTIONS))
-    prepare_data('./data/traj_dump_10k.txt', './data/train/iter0_10k')
+    # prepare_data('./data/traj_dump_1k.txt', './data/val/iter0')
+    prepare_data('./data/traj_dump_10k.txt', './data/train/iter0')

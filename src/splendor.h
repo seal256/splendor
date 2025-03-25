@@ -12,7 +12,7 @@ using nlohmann::json;
 
 namespace splendor {
    
-const int NUM_GEMS = 6;
+constexpr int NUM_GEMS = 6;
 
 extern const std::vector<std::string> ACTIONS_STR;
 extern const std::unordered_map<std::string, size_t> ACTION_ID;

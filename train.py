@@ -24,7 +24,7 @@ class SplendorDataset(Dataset):
         states = np.unpackbits(states, axis=1, count=state_len)
 
         self.states = torch.tensor(states, dtype=torch.float32)
-        self.actions = torch.tensor(actions, dtype=torch.long)
+        self.actions = torch.tensor(actions, dtype=torch.float32)
         self.rewards = torch.tensor(rewards, dtype=torch.float32)
 
     def __len__(self):
@@ -46,75 +46,77 @@ class SplendorDataset(Dataset):
         return state, action, reward
 
 
-class TwoHeadMLP(nn.Module):
+class MLP(nn.Module):
     def __init__(self, input_size, hidden_size, num_actions):
-        super(TwoHeadMLP, self).__init__()
-        self.shared_layer = nn.Linear(input_size, hidden_size)
-        self.action_head = nn.Linear(hidden_size, num_actions)
-        self.qval_head = nn.Linear(hidden_size, 1)
-        
-    def forward(self, x):
-        shared_output = torch.relu(self.shared_layer(x))
-        action_output = self.action_head(shared_output)
-        qval_output = torch.sigmoid(self.qval_head(shared_output))
-        return action_output, qval_output
+        super(MLP, self).__init__()
+        self.fc1 = nn.Linear(input_size, hidden_size)
+        self.fc2 = nn.Linear(hidden_size, num_actions)
+        self._init_weights()
+    
+    def _init_weights(self):
+        nn.init.xavier_uniform_(self.fc1.weight)
+        nn.init.zeros_(self.fc1.bias)
+        nn.init.xavier_uniform_(self.fc2.weight)
+        nn.init.zeros_(self.fc2.bias)
 
-def train_epoch(model, data_loader, optimizer, device):
+    def forward(self, x):
+        x = F.relu(self.fc1(x))        
+        x = F.softmax(self.fc2(x), dim=-1)
+        return x
+
+def loss(output, target):
+    return -torch.mean(torch.sum(target * torch.log(output + 1e-10), dim=1))
+    # return F.kl_div(output, target)
+
+def data_loss(data_loader, criterion):
+    '''Computes irreducible entrpy of the target probability distibution'''
+    total_loss = 0.0
+    for _, y_action_batch, _ in data_loader:
+        total_loss += criterion(y_action_batch, y_action_batch).item()
+    
+    return total_loss / len(data_loader)
+
+def train_epoch(model, data_loader, optimizer, criterion, device):
     model.train()
-    total_loss_action = 0.0
-    total_loss_qval = 0.0
+    total_loss = 0.0
     action_correct = 0
     num_samples = 0
     
-    for X_batch, y_action_batch, y_qval_batch in data_loader:
-        X_batch, y_action_batch, y_qval_batch = X_batch.to(device), y_action_batch.to(device), y_qval_batch.to(device)
+    for X_batch, y_action_batch, _ in data_loader:
+        X_batch, y_action_batch = X_batch.to(device), y_action_batch.to(device)
         optimizer.zero_grad()
         
-        action_output, qval_output = model(X_batch)
+        action_output = model(X_batch)
         
-        loss_action = F.cross_entropy(action_output, y_action_batch)
-        loss_qval = F.mse_loss(qval_output.squeeze(), y_qval_batch)
-        loss = loss_action + 10.0 * loss_qval
+        loss = criterion(action_output, y_action_batch)
         
         loss.backward()
         optimizer.step()
         
-        total_loss_action += loss_action.item()
-        total_loss_qval += loss_qval.item()
+        total_loss += loss.item()
         
-        action_correct += torch.sum(torch.argmax(action_output, dim=1) == y_action_batch).item()
+        action_correct += torch.sum(torch.argmax(action_output, dim=1) == torch.argmax(y_action_batch, dim=1)).item()
         num_samples += y_action_batch.size(0)
     
-    num_batches = len(data_loader)
-    action_accuracy = action_correct / num_samples
-    
-    return total_loss_action / num_batches, total_loss_qval / num_batches, action_accuracy
+    return total_loss / len(data_loader), action_correct / num_samples
 
-def validate(model, data_loader, device):
+def validate(model, data_loader, criterion, device):
     model.eval()
-    total_loss_action = 0.0
-    total_loss_qval = 0.0
+    total_loss = 0.0
     action_correct = 0
     num_samples = 0
     
     with torch.no_grad():
-        for X_batch, y_action_batch, y_qval_batch in data_loader:
-            X_batch, y_action_batch, y_qval_batch = X_batch.to(device), y_action_batch.to(device), y_qval_batch.to(device)
+        for X_batch, y_action_batch, _ in data_loader:
+            X_batch, y_action_batch = X_batch.to(device), y_action_batch.to(device)
             
-            action_output, qval_output = model(X_batch)
-            
-            loss_action = F.cross_entropy(action_output, y_action_batch) # averaged over the batch
-            loss_qval = F.mse_loss(qval_output.squeeze(), y_qval_batch)
+            action_output = model(X_batch)
+            total_loss += criterion(action_output, y_action_batch).item()
 
-            total_loss_action += loss_action.item()
-            total_loss_qval += loss_qval.item()            
-            action_correct += torch.sum(torch.argmax(action_output, dim=1) == y_action_batch).item()
+            action_correct += torch.sum(torch.argmax(action_output, dim=1) == torch.argmax(y_action_batch, dim=1)).item()
             num_samples += y_action_batch.size(0)
-    
-    num_batches = len(data_loader)
-    action_accuracy = action_correct / num_samples
-    
-    return total_loss_action / num_batches, total_loss_qval / num_batches, action_accuracy
+
+    return total_loss / len(data_loader), action_correct / num_samples
 
 def print_weigths(model):
     for name, param in model.named_parameters():
@@ -125,17 +127,17 @@ def print_weigths(model):
     print()
 
 
-def train_loop(model, train_loader, val_loader, optimizer, device, num_epochs, verbose=True):
+def train_loop(model, train_loader, val_loader, optimizer, criterion, device, num_epochs, verbose=True):
     model = model.to(device)
     
     for epoch in range(num_epochs):
-        train_loss_action, train_loss_qval, train_action_accuracy = train_epoch(model, train_loader, optimizer, device)
-        val_loss_action, val_loss_qval, val_action_accuracy = validate(model, val_loader, device)
+        train_loss, train_accuracy = train_epoch(model, train_loader, optimizer, criterion, device)
+        val_loss, val_accuracy = validate(model, val_loader, criterion, device)
         
         curr_time = datetime.now().strftime("%H:%M:%S")
         print(f"{curr_time} Epoch {epoch+1}/{num_epochs}, "
-              f"train loss action: {train_loss_action:.4f}, loss qval: {train_loss_qval:.4f}, accuracy: {train_action_accuracy:.4f}, "
-              f"val loss action: {val_loss_action:.4f}, loss qval: {val_loss_qval:.4f}, accuracy: {val_action_accuracy:.4f}")
+              f"train loss: {train_loss:.4f}, accuracy: {train_accuracy:.4f}, "
+              f"val loss: {val_loss:.4f}, accuracy: {val_accuracy:.4f}")
         if verbose:
             print_weigths(model)
 
@@ -152,20 +154,24 @@ def train():
     print(f'device: {device}')
 
     model_path = './data/models/mlp_10k.pth'
-    model = TwoHeadMLP(input_size=STATE_LEN, hidden_size=100, num_actions=NUM_ACTIONS)
+    model = MLP(input_size=STATE_LEN, hidden_size=200, num_actions=NUM_ACTIONS)
     # model.load_state_dict(torch.load(model_path))
 
-    dataset = SplendorDataset(data_fname_prefix='./data/train/iter0_10k')
-    train_size = int(0.8 * len(dataset))
-    val_size = len(dataset) - train_size
-    train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
-
+    train_dataset = SplendorDataset(data_fname_prefix='./data/train/iter0')
+    val_dataset = SplendorDataset(data_fname_prefix='./data/val/iter0')
+    print(f'train set len: {len(train_dataset)} val set len: {len(val_dataset)}')
+    
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=3e-3)
+    optimizer = torch.optim.Adam(model.parameters(), lr=5e-3, weight_decay=1e-4)
+    criterion = loss
 
-    train_loop(model, train_loader, val_loader, optimizer, device, num_epochs=20, verbose=False)
+    train_data_entropy = data_loss(train_loader, criterion)
+    val_data_entropy = data_loss(val_loader, criterion)
+    print(f'train data entropy: {train_data_entropy:.4f}, val data entropy: {val_data_entropy:.4f}')
+
+    train_loop(model, train_loader, val_loader, optimizer, criterion, device, num_epochs=10, verbose=True)
 
     torch.save(model.state_dict(), model_path)
     print(f'Final model saved to {model_path}')

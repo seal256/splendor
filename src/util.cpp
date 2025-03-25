@@ -89,6 +89,17 @@ void to_json(json& j, const Trajectory<Action>& traj) {
             states.push_back(*dynamic_cast<SplendorGameState*>(state.get()));
         j["states"] = states;
     }
+
+    if (!traj.freqs.empty()) {
+        std::vector<std::map<std::string, int>> freqs;
+        freqs.resize(traj.freqs.size());
+        for (size_t action_num = 0; action_num < freqs.size(); action_num++) {
+            for (const auto& pr : traj.freqs[action_num]) {
+                freqs[action_num][pr.first.to_str()] = pr.second;
+            }
+        }
+        j["freqs"] = freqs;
+    }
 }
 
 void dump_trajectories(const std::string& file_name, const std::vector<Trajectory<Action>>& trajectories) {

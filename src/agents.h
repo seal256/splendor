@@ -7,10 +7,17 @@
 #include "mcts.h"
 
 template<typename ActionT>
+struct ActionInfo {
+    ActionT action; // selected action
+    std::vector<std::pair<ActionT, int>> freqs; // estimates of actions quality
+};
+
+template<typename ActionT>
 class Agent {
 public:
     virtual ~Agent() {};
     virtual ActionT get_action(const std::shared_ptr<GameState<ActionT>>& game_state) const = 0;
+    virtual ActionInfo<ActionT> get_action_info(const std::shared_ptr<GameState<ActionT>>& game_state) const = 0; // additionally returns frequencies of actions
 };
 
 template<typename ActionT>
@@ -19,6 +26,21 @@ public:
     RandomAgent() {};
     ActionT get_action(const std::shared_ptr<GameState<ActionT>>& game_state) const override {
         std::vector<ActionT> legal_actions = game_state->get_actions();
+        return pick_action(legal_actions);
+    }
+
+    ActionInfo<ActionT> get_action_info(const std::shared_ptr<GameState<ActionT>>& game_state) const override {
+        ActionInfo<ActionT> action_info;
+        const auto legal_actions = game_state->get_actions();
+        action_info.action = pick_action(legal_actions);
+        for (const auto& action: legal_actions) {
+            action_info.freqs.emplace_back(action, 1);
+        }
+        return action_info;
+    }
+
+private:
+    ActionT pick_action(const std::vector<ActionT>& legal_actions) const {
         if (legal_actions.empty()) {
             throw std::runtime_error("No legal actions available.");
         }
@@ -37,15 +59,16 @@ public:
 
     ActionT get_action(const std::shared_ptr<GameState<ActionT>>& game_state) const override {
         mcts::MCTS<ActionT> mcts(game_state, mcts_params);
-        // auto start = std::chrono::high_resolution_clock::now();
-        
-        ActionT action = mcts.search();
-        
-        // auto end = std::chrono::high_resolution_clock::now();
-        // auto duration = static_cast<double>((std::chrono::duration_cast<std::chrono::milliseconds>(end - start)).count()) / 1000.0;
-        // std::cout << "Elapsed: " << duration << " sec, Iterations per second: " << mcts_params.iterations / duration << "\n";
-        
+        ActionT action = mcts.search();    
         return action;
+    }
+
+    ActionInfo<ActionT> get_action_info(const std::shared_ptr<GameState<ActionT>>& game_state) const override {
+        ActionInfo<ActionT> action_info;
+        mcts::MCTS<ActionT> mcts(game_state, mcts_params);
+        action_info.action = mcts.search();    
+        action_info.freqs = mcts.root_visits();
+        return action_info;
     }
 };
 
@@ -97,6 +120,14 @@ public:
         ActionT action = mcts.search();
         
         return action;
+    }
+
+    ActionInfo<ActionT> get_action_info(const std::shared_ptr<GameState<ActionT>>& game_state) const override {
+        ActionInfo<ActionT> action_info;
+        mcts::PolicyMCTS<ActionT> mcts(game_state, policy, mcts_params);
+        action_info.action = mcts.search();    
+        action_info.freqs = mcts.root_visits();
+        return action_info;
     }
 };
 

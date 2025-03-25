@@ -16,22 +16,19 @@ struct Trajectory {
     std::vector<ActionT> actions;
     std::vector<double> rewards; // obtained at the end of the game
     std::vector<std::shared_ptr<GameState<ActionT>>> states; // optional
+    std::vector<std::vector<std::pair<ActionT, int>>> freqs; // Optional, root node action counts for each state
 };
 
 template<typename ActionT>
-Trajectory<ActionT> run_one_game(std::shared_ptr<GameState<ActionT>> game_state, const std::vector<std::shared_ptr<Agent<ActionT>>>& agents, const std::shared_ptr<Agent<ActionT>> random_agent, bool verbose=false, bool save_states=false) {
+Trajectory<ActionT> run_one_game(std::shared_ptr<GameState<ActionT>> game_state, const std::vector<std::shared_ptr<Agent<ActionT>>>& agents, const std::shared_ptr<Agent<ActionT>> random_agent, bool verbose=false, bool save_states=false, bool save_freqs=false) {
     Trajectory<ActionT> trajectory;
     trajectory.initial_state = game_state->clone();
 
     int active_player = game_state->active_player();
     while (!game_state->is_terminal()) {
-        ActionT action;
-        if (active_player == CHANCE_PLAYER) { // chance game state
-            action = random_agent->get_action(game_state);
-
-        } else {
-            action = agents[active_player]->get_action(game_state);
-        }
+        const auto& agent = active_player == CHANCE_PLAYER ? random_agent : agents[active_player];
+        const auto action_info = agent->get_action_info(game_state);
+        const ActionT& action = action_info.action;
 
         if (verbose) {
             std::cout << "\n" << *game_state << "\n";
@@ -40,8 +37,12 @@ Trajectory<ActionT> run_one_game(std::shared_ptr<GameState<ActionT>> game_state,
 
         trajectory.actions.push_back(action);
         game_state->apply_action(action);
-        if (save_states) // debug feature. Normally you should be able to reconstruct all states from initial_state and actions
+        if (save_states) { // debug feature. Normally you should be able to reconstruct all states from initial_state and actions
             trajectory.states.push_back(game_state->clone());
+        }
+        if (save_freqs) {
+            trajectory.freqs.push_back(action_info.freqs);
+        }
         active_player = game_state->active_player();
     }
 
@@ -68,6 +69,7 @@ public:
     unsigned int random_seed;
     bool verbose;
     bool save_states;
+    bool save_freqs;
     std::string dump_trajectories;
 
     GameSeriesTask(const json& jsn) {
@@ -81,6 +83,7 @@ public:
         random_seed = jsn.value("random_seed", 11); 
         verbose = jsn.value("verbose", false);
         save_states = jsn.value("save_states", false); 
+        save_freqs = jsn.value("save_freqs", false); 
         for (const auto& player_config : jsn.at("agents")) {
             agents.push_back(construct_agent(player_config));
         }
@@ -96,7 +99,7 @@ std::vector<Trajectory<ActionT>> run_games(const GameSeriesTask<ActionT>& task) 
     for (int game_num = 0; game_num < task.num_games; ++game_num) {
 
         auto game_state = std::make_shared<GameStateT>(task.agents.size());
-        Trajectory<ActionT> trajectory = run_one_game<ActionT>(game_state, task.agents, random_agent, task.verbose, task.save_states);
+        Trajectory<ActionT> trajectory = run_one_game<ActionT>(game_state, task.agents, random_agent, task.verbose, task.save_states, task.save_freqs);
         trajectories.push_back(trajectory);
 
         std::cout << "Game " << game_num << " of " << task.num_games 

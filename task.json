@@ -12,9 +12,10 @@
             "exploration": 1.4
         }
     ],
-    "num_games": 1000,
-    "num_workers": 8,
-    "random_seed": 19394,
+    "num_games": 10000,
+    "num_workers": 10,
+    "random_seed": 71718,
     "verbose": false,
-    "dump_trajectories": "data/traj_dump_1k.txt"
+    "save_freqs": true,
+    "dump_trajectories": "data/traj_dump_10k.txt"
 }

@@ -62,6 +62,7 @@
         "stack": "cpp",
         "__tree": "cpp",
         "fstream": "cpp",
-        "span": "cpp"
+        "span": "cpp",
+        "future": "cpp"
     }
 }

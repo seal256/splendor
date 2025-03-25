@@ -260,6 +260,16 @@ public:
             });
         return (*best_child)->action;
     }
+    
+    std::vector<std::pair<ActionT, int>> root_visits() const {
+        // Helper function that returns children visits at the root state
+        std::vector<std::pair<ActionT, int>> visits;
+        visits.reserve(root->children.size());
+        for (const auto& child : root->children) {
+            visits.emplace_back(child->action, child->visits);
+        }
+        return visits;
+    }
 
     void apply_action(const ActionT& action) {
         // Applies an actual game action and rebases the tree root.
