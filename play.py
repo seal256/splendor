@@ -6,45 +6,37 @@ from pysplendor.game_state import GameState, CHANCE_PLAYER
 from pysplendor.agents import RandomAgent, MCTSAgent, Agent
 from pysplendor.splendor import SplendorGameState, Action
 from pysplendor.game import run_one_game, Trajectory, traj_loader
-from pysplendor.mcts import PolicyMCTS, ActionEncoder, Policy
+from pysplendor.mcts import PolicyMCTS, Policy
 from prepare_data import SplendorGameStateEncoder, ALL_ACTIONS, ACTION_ID
-from train import TwoHeadMLP
+from train import STATE_LEN, NUM_ACTIONS, MLP
 
 
 class NNPolicy(Policy):
-    def __init__(self, model, state_encoder):
+    def __init__(self, model, state_encoder, action_ids):
         self.model = model
         self.state_encoder = state_encoder
+        self.action_ids = action_ids
 
-    def predict(self, state):
-        state_vec = self.state_encoder.state_to_vec(state)
+    def predict(self, game_state: GameState):
+        state_vec = self.state_encoder.state_to_vec(game_state)
         X = torch.tensor(state_vec, dtype=torch.float32)
-        logits, _ = self.model.forward(X)
-        return logits.detach().numpy()
-
-
-class SplendorActionEncoder(ActionEncoder):
-    def __init__(self):
-        self.action_dict = ACTION_ID
-
-    def action_id(self, action):
-        return self.action_dict[str(action)]
+        probs = self.model.forward(X).detach().numpy()
+        action_probs = [probs[self.action_ids.get(str(a))] for a in game_state.get_actions()]
+        return action_probs
 
 
 class PolicyMCTSAgent(Agent):
-    def __init__(self, **mcts_params):
+    def __init__(self, policy, **mcts_params):
+        self.policy = policy
         self.mcts_params = mcts_params
 
     def get_action(self, game_state: GameState):
-        mcts = PolicyMCTS(game_state, **self.mcts_params)
+        mcts = PolicyMCTS(game_state, self.policy, **self.mcts_params)
         action = mcts.search()
         return action
 
-
 def load_mlp_model(model_path):
-    STATE_LEN = 1052
-    NUM_ACTIONS = 43
-    model = TwoHeadMLP(STATE_LEN, 100, NUM_ACTIONS)
+    model = MLP(STATE_LEN, 100, NUM_ACTIONS)
     state_dict = torch.load(model_path)
     model.load_state_dict(state_dict)
     model.eval()
@@ -66,10 +58,12 @@ def tournament(agents, num_games, verbose=True):
 if __name__ == '__main__':
     random.seed(11)
 
-    model = load_mlp_model('./data/models/mlp_10k_100e.pth')
+    model = load_mlp_model('./data/models/mlp_10k_bw.pth')
     state_encoder = SplendorGameStateEncoder(2)
-    nn_agent = PolicyMCTSAgent(policy=NNPolicy(model, state_encoder), action_encoder=SplendorActionEncoder(), policy_weight=0.5, iterations=1000)
-    mcts_agent = MCTSAgent(iterations=1000)
+    policy = NNPolicy(model, state_encoder, ACTION_ID)
+    mcts_params = {"iterations": 1000}
+    nn_agent = PolicyMCTSAgent(policy, **mcts_params)
+    mcts_agent = MCTSAgent(**mcts_params)
 
     agents = [mcts_agent, nn_agent]
     game_state = SplendorGameState(len(agents))

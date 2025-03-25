@@ -1,6 +1,7 @@
 import math
 import random
 from tqdm import tqdm
+from abc import ABC, abstractmethod
 
 from .game_state import GameState, CHANCE_PLAYER
 
@@ -91,29 +92,26 @@ class MCTS:
             self.root = Node(active_player=self.root_state.active_player())
 
     def _select_child(self, node):
-        '''Uses UCB-like criterion to select best node for rollout'''
+        '''Uses UCB-like criterion to select best node'''
+
         unexplored = [c for c in node.children if c.visits == 0]
         if unexplored:
             return random.choice(unexplored)
-        return max(node.children, key=lambda c: c.wins / c.visits + self.exploration * node.p * math.sqrt(math.log(node.visits) / c.visits))
+        return max(node.children, key=lambda c: c.wins / c.visits + self.exploration * math.sqrt(math.log(node.visits) / c.visits))
 
-class ActionEncoder:
-    def action_id(self, action):
-        pass
-
-class Policy:
-    def predict(self, state) -> list[float]:
+class Policy(ABC):
+    @abstractmethod
+    def predict(self, game_state) -> list[float]:
+        '''Returns probabilities for actions returned by the game_state.get_actions()'''
         pass
 
 class PolicyMCTS(MCTS):
-    def __init__(self, state: GameState, policy: Policy, action_encoder: ActionEncoder, policy_weight=0.5, iterations=1000, exploration=1.4):
+    def __init__(self, state: GameState, policy: Policy, iterations=1000, exploration=1.4):
         super().__init__(state, iterations, exploration)
         self.policy = policy # action selection policy
-        self.action_encoder = action_encoder
-        self.policy_weight = policy_weight
 
     def _search_iteration(self):
-       # Selection
+        # Selection
         node: Node = self.root
         state = self.root_state.copy()
         while node.children and node.visits > 0:
@@ -124,16 +122,16 @@ class PolicyMCTS(MCTS):
         if not state.is_terminal() and not node.children and node.visits > 0:
             actions = state.get_actions()
             active_player = state.active_player()
-            if active_player != CHANCE_PLAYER:
-                probs = self._estimate_probs(state, actions)
-            else:
-                probs = [1] * len(actions)
+            probs = [1.0] * len(actions) if active_player == CHANCE_PLAYER else self.policy.predict(state)
             for action, p in zip(actions, probs):
                 child_node = Node(action=action, active_player=active_player, parent=node)
                 child_node.p = p
                 node.children.append(child_node)
-            node = self._select_child(node)
-            state.apply_action(node.action)
+            if active_player == CHANCE_PLAYER:
+                random.shuffle(node.children)
+            if node.children:
+                node = self._select_child(node)
+                state.apply_action(node.action)
 
         # Simulation
         rewards = self._rollout(state)
@@ -141,22 +139,23 @@ class PolicyMCTS(MCTS):
         # Backpropagation
         while node is not None:
             node.visits += 1
-            # active_player may be None if we are at a chance node
-            if node.active_player is not None: 
+            if node.active_player != CHANCE_PLAYER: 
                 node.wins += rewards[node.active_player]
             node = node.parent
-    
-    def _estimate_probs(self, state, actions):
-        '''Returns probability estimates for selected actions'''
-        probs = self.policy.predict(state)
-        w = self.policy_weight
-        action_probs = [(1 - w) + w * probs[self.action_encoder.action_id(a)] for a in actions] # all probabilities are artificially increased to avoid zeroing out
-        s = sum(action_probs)
-        action_probs = [p / s for p in action_probs]
-        return action_probs
 
     def _select_child(self, node):
-        '''Uses UCB-like criterion to select best node for rollout'''
-        return max(node.children, key=lambda c: c.wins / (c.visits + 1) + self.exploration * node.p * math.sqrt(node.visits + 1) / (c.visits + 1))
-  
+        '''Uses UCB-like criterion to select best node'''
 
+        max_ucb = -1
+        best_child = None
+        parent_visits_sqrts = math.sqrt(node.visits)
+        for child in node.children:
+            exploitation_term = child.wins / child.visits if child.visits > 0 else 0
+            exploration_term = child.p * parent_visits_sqrts / (child.visits + 1)
+            ucb = exploitation_term + self.exploration * exploration_term
+            if ucb > max_ucb:
+                max_ucb = ucb
+                best_child = child
+        if best_child is None:
+            raise RuntimeError("Unable to find best child!")
+        return best_child
