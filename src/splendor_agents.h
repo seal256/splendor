@@ -4,9 +4,8 @@
 #include "splendor.h"
 
 #include "json.hpp"
-using json = nlohmann::json;
 
 
-std::shared_ptr<Agent<splendor::Action>> construct_agent(const json& jsn);
+std::shared_ptr<Agent<splendor::Action>> construct_agent(const nlohmann::json& jsn);
 
 

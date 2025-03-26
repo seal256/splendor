@@ -34,7 +34,8 @@ class MCTS:
         
     def search(self):
         '''Grows the search tree and returns the best expected action'''
-        for _ in tqdm(range(self.iterations)):
+        # for _ in tqdm(range(self.iterations)):
+        for _ in range(self.iterations):
             self._search_iteration()
         return self.best_action()
 

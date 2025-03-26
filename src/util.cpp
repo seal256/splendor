@@ -47,7 +47,7 @@ void splendor_stats(const std::vector<Trajectory<Action>>& trajectories) {
         for (auto action : traj.actions) {
             state->apply_action(action);
         }
-        auto final_state = dynamic_cast<SplendorGameState *>(state.get());
+        auto final_state = std::dynamic_pointer_cast<SplendorGameState>(state);
         game_lengths.push_back(final_state->round);
         for (int player = 0; player < num_players; ++player) {
             int num_cards = final_state->players[player].card_gems.sum(); 
@@ -77,16 +77,19 @@ void to_json(json& j, const Trajectory<Action>& traj) {
     for (const auto action : traj.actions)
         actions.push_back(action.to_str());
     
+    auto initial_state = std::dynamic_pointer_cast<SplendorGameState>(traj.initial_state);
     j = {
-        {"initial_state", *dynamic_cast<SplendorGameState*>(traj.initial_state.get())},
+        {"initial_state", *initial_state},
         {"rewards", traj.rewards},
         {"actions", actions}
     };
 
     if (!traj.states.empty()) {
         std::vector<json> states;
-        for (auto state : traj.states)
-            states.push_back(*dynamic_cast<SplendorGameState*>(state.get()));
+        for (auto state : traj.states) {
+            auto splendor_state = std::dynamic_pointer_cast<SplendorGameState>(state);
+            states.push_back(*splendor_state);
+        }
         j["states"] = states;
     }
 

@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 import random
+from concurrent.futures import ProcessPoolExecutor
 
 from pysplendor.game_state import GameState, CHANCE_PLAYER
 from pysplendor.agents import RandomAgent, MCTSAgent, Agent
@@ -55,6 +56,20 @@ def tournament(agents, num_games, verbose=True):
         wins = sum([r[id] for r in results])
         print(f'palyer {id} wins: {wins}')
 
+def run_tournament_round(agents):
+    game_state = SplendorGameState(len(agents))
+    traj = run_one_game(game_state, agents, verbose=False)
+    return traj.rewards
+
+def tournament_parallel(agents, num_games, num_workers=8):
+    args = [agents for _ in range(num_games)]
+    with ProcessPoolExecutor(max_workers=num_workers) as executor:
+        results = list(executor.map(run_tournament_round, args))
+    
+    for id in range(len(agents)):
+        wins = sum(r[id] for r in results)
+        print(f'player {id} wins: {wins}')
+
 if __name__ == '__main__':
     random.seed(11)
 
@@ -68,4 +83,5 @@ if __name__ == '__main__':
     agents = [mcts_agent, nn_agent]
     game_state = SplendorGameState(len(agents))
     # traj = run_one_game(game_state, agents, verbose=True)
-    tournament(agents, num_games=10)
+    tournament(agents, num_games=100, verbose=False)
+    # tournament_parallel(agents, num_games=100, num_workers=10)

@@ -80,7 +80,7 @@ class ConstantPolicy : public mcts::Policy<ActionT> {
 public:
     ConstantPolicy(const std::vector<double>& probs, const std::unordered_map<std::string, size_t>& action_ids) : probs(probs), action_ids(action_ids) {}
    
-    std::vector<double> predict(const std::shared_ptr<GameState<ActionT>> game_state) override {
+    std::vector<double> predict(const std::shared_ptr<GameState<ActionT>> game_state) const override {
         const std::vector<ActionT> actions = game_state->get_actions();
         std::vector<double> action_probs;
         action_probs.reserve(actions.size());

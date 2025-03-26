@@ -180,8 +180,16 @@ private:
 template<typename ActionT>
 class Policy {
 public:
-    virtual std::vector<double> predict(const std::shared_ptr<GameState<ActionT>> game_state) = 0;
+    // Retunrs probabilities of available actions in the order provided by game_state->get_actions()
+    virtual std::vector<double> predict(const std::shared_ptr<GameState<ActionT>> game_state) const = 0;
     virtual ~Policy() {};
+};
+
+template<typename ActionT>
+class GameStateEncoder {
+public:
+    virtual std::vector<float> encode(const std::shared_ptr<GameState<ActionT>> game_state) const = 0;
+    virtual ~GameStateEncoder() {};
 };
 
 template<typename ActionT>

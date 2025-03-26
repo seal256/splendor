@@ -13,6 +13,7 @@ using nlohmann::json;
 namespace splendor {
    
 constexpr int NUM_GEMS = 6;
+constexpr int CARD_LEVELS = 3;
 
 extern const std::vector<std::string> ACTIONS_STR;
 extern const std::unordered_map<std::string, size_t> ACTION_ID;
@@ -110,6 +111,8 @@ struct SplendorGameRules {
         max_gems = (num_players < 4) ? 2 + num_players : 7;
     }
 };
+
+extern const std::unordered_map<int, SplendorGameRules> DEFAULT_RULES;
 
 class SplendorGameState : public GameState<Action> {
 public:

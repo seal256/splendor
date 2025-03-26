@@ -7,4 +7,6 @@ set(SOURCE_FILES
 
 add_executable(splendor ${SOURCE_FILES})
 
+target_link_libraries(splendor "${TORCH_LIBRARIES}")
+
 target_include_directories(splendor PRIVATE .)

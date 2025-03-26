@@ -8,7 +8,6 @@
 
 namespace splendor {
 
-const int CARD_LEVELS = 3;
 const int GOLD_GEM = 5; // Index of the gold gem
 const std::array<int, NUM_GEMS> GEMS = {0, 1, 2, 3, 4, 5};
 
@@ -248,7 +247,7 @@ std::unordered_map<std::string, size_t> init_action_ids() {
 }
 const std::unordered_map<std::string, size_t> ACTION_ID = init_action_ids();
 
-std::unordered_map<int, SplendorGameRules> DEFAULT_RULES = {{2, SplendorGameRules(2)}, {3, SplendorGameRules(3)}, {4, SplendorGameRules(4)}};
+const std::unordered_map<int, SplendorGameRules> DEFAULT_RULES = {{2, SplendorGameRules(2)}, {3, SplendorGameRules(3)}, {4, SplendorGameRules(4)}};
 
 SplendorGameState::SplendorGameState(int num_players, const SplendorGameRules* rules)
     : rules(rules ? rules : &DEFAULT_RULES.at(num_players)),
