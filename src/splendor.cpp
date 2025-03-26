@@ -4,6 +4,7 @@
 #include <random>
 
 #include "splendor.h"
+#include "random_util.h"
 
 namespace splendor {
 
@@ -263,7 +264,7 @@ SplendorGameState::SplendorGameState(int num_players, const SplendorGameRules* r
     for (const Noble& noble : NOBLES) {
         nobles.push_back(&noble);
     }
-    std::random_shuffle(nobles.begin(), nobles.end());
+    random_shuffle(nobles.begin(), nobles.end());
     nobles.resize(this->rules->max_nobles);
 
     // Initialize decks and cards
@@ -275,7 +276,7 @@ SplendorGameState::SplendorGameState(int num_players, const SplendorGameRules* r
         for (const Card& card : CARDS[level]) {
             deck_cards.push_back(&card);
         }
-        std::random_shuffle(deck_cards.begin(), deck_cards.end());
+        random_shuffle(deck_cards.begin(), deck_cards.end());
         int open_cards = this->rules->max_open_cards;
         cards[level].resize(open_cards);
         std::copy(deck_cards.end() - open_cards, deck_cards.end(), cards[level].begin()); // copy from the end of the shuffled array

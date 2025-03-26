@@ -9,6 +9,7 @@
 #include <chrono>
 
 #include "game_state.h"
+#include "random_util.h"
 
 namespace mcts {
 
@@ -74,7 +75,7 @@ public:
                 auto child_node = std::make_shared<Node<ActionT>>(action, node.get(), state->active_player());
                 node->children.push_back(child_node);
             }
-            std::random_shuffle(node->children.begin(), node->children.end()); // Optional step
+            random_shuffle(node->children.begin(), node->children.end()); // Optional step
             if (!node->children.empty()) {
                 node = node->children[0]; // Assumes that the children are shuffled. Otherwize pick random index
                 state->apply_action(node->action);
@@ -226,7 +227,7 @@ public:
                 node->children.push_back(child_node);
             }
             if (state->active_player() == CHANCE_PLAYER) {
-                std::random_shuffle(node->children.begin(), node->children.end()); // Optional step
+                random_shuffle(node->children.begin(), node->children.end()); // Optional step
             }
             if (!node->children.empty()) {
                 node = _select_child(node);

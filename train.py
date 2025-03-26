@@ -176,10 +176,15 @@ def train():
     torch.save(model.state_dict(), model_path)
     print(f'Final model saved to {model_path}')
 
-
+def export_model_with_torchscript():
+    model_path = './data/models/mlp_10k_bw.pth'
+    model = MLP(input_size=STATE_LEN, hidden_size=100, num_actions=NUM_ACTIONS)
+    model.load_state_dict(torch.load(model_path))
+    sm = torch.jit.script(model)
+    sm.save('./data/models/mlp_10k_bw.pt')
 
 
 if __name__ == "__main__":
 
     train()
-    # run_model()
+
