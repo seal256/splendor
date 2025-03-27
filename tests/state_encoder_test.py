@@ -49,7 +49,6 @@ def test_cpp_vs_python_state_encoder_implementation_equivalence():
 
     # 3. Compare results
       
-    state_vec_cpp[1]=1
     assert state_vec_cpp == state_vec_python, "Encoded state vectors are not equal" 
     assert prediction_cpp == prediction_python, "Model predictions are not equal" 
 

@@ -127,6 +127,16 @@ void run_model(const json& task_json) {
     const std::string result_file = task_json["result_file"];
 
     auto game_state = std::make_shared<SplendorGameState>(num_players);
+    int num_moves = std::rand() % 20;
+    auto random_agent = RandomAgent<Action>();
+    for (int n = 0; n < num_moves; n++) { // makes a few moves to disturb the state
+        auto action = random_agent.get_action(game_state);
+        game_state->apply_action(action);
+        if (n == num_moves - 1 && game_state->active_player() == CHANCE_PLAYER) {
+            num_moves += 1;
+        }
+    }
+
     auto state_encoder = std::make_shared<splendor::SplendorGameStateEncoder>(num_players);
     std::vector<int> state_vec = state_encoder->state_to_vec(*game_state);
     
