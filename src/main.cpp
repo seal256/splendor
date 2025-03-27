@@ -42,13 +42,20 @@ int main(int argc, char* argv[]) {
         std::srand(seed);
     }
 
-    GameSeriesTask<Action> task(task_json);
-    std::vector<Trajectory<Action>> trajectories = task.num_workers > 1 ? 
-        run_games_parallel<SplendorGameState, Action>(task) : run_games<SplendorGameState, Action>(task);
-    
-    splendor_stats(trajectories);
-    if (!task.dump_trajectories.empty()) {
-        dump_trajectories(task.dump_trajectories, trajectories);
+    const std::string task_name = task_json.value("task", "run_games");
+    if (task_name == "run_games") {
+        GameSeriesTask<Action> task(task_json);
+        std::vector<Trajectory<Action>> trajectories = task.num_workers > 1 ? 
+            run_games_parallel<SplendorGameState, Action>(task) : run_games<SplendorGameState, Action>(task);
+        
+        splendor_stats(trajectories);
+        if (!task.dump_trajectories.empty()) {
+            dump_trajectories(task.dump_trajectories, trajectories);
+        }
+
+    } else if (task_name == "run_model") {
+        // for debug: runs the action model once
+        run_model(task_json);
     }
 
     return 0;

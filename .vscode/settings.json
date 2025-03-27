@@ -63,6 +63,12 @@
         "__tree": "cpp",
         "fstream": "cpp",
         "span": "cpp",
-        "future": "cpp"
+        "future": "cpp",
+        "condition_variable": "cpp",
+        "list": "cpp",
+        "set": "cpp",
+        "shared_mutex": "cpp",
+        "typeindex": "cpp",
+        "unordered_set": "cpp"
     }
 }

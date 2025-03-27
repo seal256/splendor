@@ -31,7 +31,8 @@ class SplendorGameStateEncoder:
             max_gems = self.rules.max_gems
         vec = [0] * (NUM_GEMS * (max_gems + 1))
         for gem, count in enumerate(gems):
-            vec[gem * max_gems + count] = 1
+            count = min(max_gems, count) # this affects cards or gold counts exceeding the limit
+            vec[gem * (max_gems + 1) + count] = 1
         return vec
 
     def card_to_vec(self, card: Card):

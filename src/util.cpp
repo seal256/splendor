@@ -1,9 +1,10 @@
 #include <iostream>
 #include <fstream>
 
-#include "splendor.h"
-#include "game.h"
+#include "util.h"
+#include "nn_policy.h"
 
+using nlohmann::json;
 using splendor::Action;
 using splendor::SplendorGameState;
 
@@ -119,3 +120,30 @@ void dump_trajectories(const std::string& file_name, const std::vector<Trajector
     out_file.close();    
     std::cout << trajectories.size() << " trajectories are dumped to " << file_name << "\n";
 }
+
+void run_model(const json& task_json) {
+    const std::string model_path = task_json["model_path"];
+    int num_players = task_json["num_players"];
+    const std::string result_file = task_json["result_file"];
+
+    auto game_state = std::make_shared<SplendorGameState>(num_players);
+    auto state_encoder = std::make_shared<splendor::SplendorGameStateEncoder>(num_players);
+    std::vector<int> state_vec = state_encoder->state_to_vec(*game_state);
+    
+    auto policy = std::make_shared<mcts::NNPolicy<Action>>(model_path, state_encoder, splendor::ACTION_ID);
+    auto prediction = policy->predict(game_state);
+
+    json result = {
+        {"game_state", *game_state},
+        {"state_vec", state_vec},
+        {"prediction", prediction}
+    };
+
+    std::ofstream out_file(result_file);
+    if (!out_file.is_open()) {
+        throw std::runtime_error("Failed to open file: " + result_file);
+    }
+
+    out_file << result.dump() << "\n";
+}
+

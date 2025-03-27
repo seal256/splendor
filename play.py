@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-import random
+import random, json
 from concurrent.futures import ProcessPoolExecutor
 
 from pysplendor.game_state import GameState, CHANCE_PLAYER
@@ -80,8 +80,9 @@ if __name__ == '__main__':
     nn_agent = PolicyMCTSAgent(policy, **mcts_params)
     mcts_agent = MCTSAgent(**mcts_params)
 
-    agents = [mcts_agent, nn_agent]
-    game_state = SplendorGameState(len(agents))
-    # traj = run_one_game(game_state, agents, verbose=True)
-    tournament(agents, num_games=100, verbose=False)
+    agents = [nn_agent, mcts_agent]
+    # game_state = SplendorGameState(len(agents))
+    game_state = SplendorGameState.from_json(json.load(open('/Users/seal/Downloads/state.json', 'rt')))
+    traj = run_one_game(game_state, agents, verbose=True)
+    # tournament(agents, num_games=100, verbose=False)
     # tournament_parallel(agents, num_games=100, num_workers=10)

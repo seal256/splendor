@@ -60,14 +60,14 @@ public:
         }
     
         // Renormalization
-        double sum = std::accumulate(action_probs.begin(), action_probs.end(), 0.0);
-        if (sum > 0.0) {
-            for (auto& prob : action_probs) {
-                prob /= sum;
-            }
-        } else {
-            std::fill(action_probs.begin(), action_probs.end(), 1.0/legal_actions.size());
-        }
+        // double sum = std::accumulate(action_probs.begin(), action_probs.end(), 0.0);
+        // if (sum > 0.0) {
+        //     for (auto& prob : action_probs) {
+        //         prob /= sum;
+        //     }
+        // } else {
+        //     std::fill(action_probs.begin(), action_probs.end(), 1.0/legal_actions.size());
+        // }
 
         return action_probs;
     }

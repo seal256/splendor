@@ -546,8 +546,9 @@ class SplendorGameState(GameState):
 
     def rewards(self):
         scores = [0.0] * len(self.players)
-        for id in self.get_winners():
-            scores[id] = 1.0
+        winners = self.get_winners()
+        for id in winners:
+            scores[id] = 1.0 / len(winners)
         return scores
 
     def get_winners(self):

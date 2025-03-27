@@ -16,9 +16,9 @@
             "exploration": 1.4
         }
     ],
-    "num_games": 10,
+    "num_games": 1,
     "num_workers": 1,
-    "random_seed": 71718,
+    "random_seed": 7188,
     "verbose": false,
     "save_freqs": true,
     "dump_trajectories": "data/traj_dump.txt"
