@@ -556,6 +556,10 @@ bool SplendorGameState::is_terminal() const {
     return false;
 }
 
+int SplendorGameState::move_num() const {
+    return round;
+}
+
 std::vector<int> SplendorGameState::_get_winners() const {
     std::vector<int> candidate_ids;
     int max_points = -1;

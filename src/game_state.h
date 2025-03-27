@@ -16,6 +16,7 @@ public:
     virtual std::vector<double> rewards() const = 0;
     virtual std::shared_ptr<GameState<ActionT>> clone() const = 0;
     virtual void print(std::ostream& os) const = 0;
+    virtual int move_num() const = 0;
 };
 
 template<typename ActionT> 

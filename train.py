@@ -154,7 +154,7 @@ def train():
     print(f'device: {device}')
 
     model_path = './data/models/mlp_10k.pth'
-    model = MLP(input_size=STATE_LEN, hidden_size=200, num_actions=NUM_ACTIONS)
+    model = MLP(input_size=STATE_LEN, hidden_size=100, num_actions=NUM_ACTIONS)
     # model.load_state_dict(torch.load(model_path))
 
     train_dataset = SplendorDataset(data_fname_prefix='./data/train/iter0')
@@ -171,18 +171,22 @@ def train():
     val_data_entropy = data_loss(val_loader, criterion)
     print(f'train data entropy: {train_data_entropy:.4f}, val data entropy: {val_data_entropy:.4f}')
 
-    train_loop(model, train_loader, val_loader, optimizer, criterion, device, num_epochs=10, verbose=True)
+    train_loop(model, train_loader, val_loader, optimizer, criterion, device, num_epochs=5, verbose=True)
 
     torch.save(model.state_dict(), model_path)
-    print(f'Final model saved to {model_path}')
+    print(f'Final model is saved to {model_path}')
 
-def export_model_with_torchscript():
-    model_path = './data/models/mlp_10k_bw.pth'
-    model = MLP(input_size=STATE_LEN, hidden_size=100, num_actions=NUM_ACTIONS)
-    model.load_state_dict(torch.load(model_path))
+    sm_model_path = model_path[:-1] # without h at the end of the name
     sm = torch.jit.script(model)
-    sm.save('./data/models/mlp_10k_bw.pt')
+    sm.save(sm_model_path)
+    print(f'Jit script model is saved to {sm_model_path}')
 
+# def export_model_with_torchscript():
+#     model_path = './data/models/mlp_10k_bw.pth'
+#     model = MLP(input_size=STATE_LEN, hidden_size=100, num_actions=NUM_ACTIONS)
+#     model.load_state_dict(torch.load(model_path))
+#     sm = torch.jit.script(model)
+#     sm.save('./data/models/mlp_10k_bw.pt')
 
 if __name__ == "__main__":
 

@@ -138,6 +138,7 @@ public:
     std::vector<double> rewards() const override;
     std::shared_ptr<GameState<Action>> clone() const override;
     void print(std::ostream& os) const override;
+    int move_num() const override;
 
 private:
     void _increment_player_to_move();

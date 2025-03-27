@@ -30,6 +30,7 @@ struct Node {
 struct MCTSParams {
     int iterations = 1000; // number of iterations
     double exploration = 1.4; // exploration constant C
+    int weighted_selection_moves = -1; // before this move number in the game best action will be selected with weights, then greedy
 };
 
 template<typename ActionT>
@@ -102,11 +103,22 @@ public:
         if (root->children.empty()) {
             throw std::runtime_error("No actions available");
         }
-        auto best_child = std::max_element(root->children.begin(), root->children.end(),
-            [](const std::shared_ptr<Node<ActionT>>& a, const std::shared_ptr<Node<ActionT>>& b) {
-                return a->visits < b->visits;
-            });
-        return (*best_child)->action;
+        if (root_state->move_num() > params.weighted_selection_moves) { // select by max visits
+            auto best_child = std::max_element(root->children.begin(), root->children.end(),
+                [](const std::shared_ptr<Node<ActionT>>& a, const std::shared_ptr<Node<ActionT>>& b) {
+                    return a->visits < b->visits;
+                });
+            return (*best_child)->action;
+
+        } else { // select with probabilites proportional to visits
+            std::vector<int> visits;
+            visits.reserve(root->children.size());
+            for (const auto& child : root->children) {
+                visits.emplace_back(child->visits);
+            }
+            size_t child_idx = weighted_random_choice(visits);
+            return root->children[child_idx]->action;
+        }
     }
 
     std::vector<std::pair<ActionT, int>> root_visits() const {
@@ -263,11 +275,22 @@ public:
         if (root->children.empty()) {
             throw std::runtime_error("No actions available");
         }
-        auto best_child = std::max_element(root->children.begin(), root->children.end(),
-            [](const std::shared_ptr<Node<ActionT>>& a, const std::shared_ptr<Node<ActionT>>& b) {
-                return a->visits < b->visits;
-            });
-        return (*best_child)->action;
+        if (root_state->move_num() > params.weighted_selection_moves) { // select by max visits
+            auto best_child = std::max_element(root->children.begin(), root->children.end(),
+                [](const std::shared_ptr<Node<ActionT>>& a, const std::shared_ptr<Node<ActionT>>& b) {
+                    return a->visits < b->visits;
+                });
+            return (*best_child)->action;
+
+        } else { // select with probabilites proportional to visits
+            std::vector<int> visits;
+            visits.reserve(root->children.size());
+            for (const auto& child : root->children) {
+                visits.emplace_back(child->visits);
+            }
+            size_t child_idx = weighted_random_choice(visits);
+            return root->children[child_idx]->action;
+        }
     }
     
     std::vector<std::pair<ActionT, int>> root_visits() const {

@@ -9,3 +9,5 @@ void random_shuffle(RandomIt first, RandomIt last) {
     thread_local std::mt19937 g(std::rand());
     std::shuffle(first, last, g);
 }
+
+size_t weighted_random_choice(const std::vector<int>& weights);

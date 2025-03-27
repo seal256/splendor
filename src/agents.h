@@ -52,7 +52,7 @@ private:
 template<typename ActionT>
 class MCTSAgent : public Agent<ActionT> {
 private:
-    mcts::MCTSParams mcts_params;
+    const mcts::MCTSParams mcts_params;
 
 public:
     MCTSAgent(const mcts::MCTSParams& params = mcts::MCTSParams()) : mcts_params(params) {}
@@ -110,7 +110,7 @@ template<typename ActionT>
 class PolicyMCTSAgent : public Agent<ActionT> {
 private:
     const std::shared_ptr<mcts::Policy<ActionT>> policy;
-    mcts::MCTSParams mcts_params;
+    const mcts::MCTSParams mcts_params;
 
 public:
     PolicyMCTSAgent(const std::shared_ptr<mcts::Policy<ActionT>>& policy, const mcts::MCTSParams& params = mcts::MCTSParams()) : policy(policy), mcts_params(params) {}
