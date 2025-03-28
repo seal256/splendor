@@ -47,10 +47,11 @@ class SplendorDataset(Dataset):
 
 
 class MLP(nn.Module):
-    def __init__(self, input_size, hidden_size, num_actions):
+    def __init__(self, input_size=STATE_LEN, hidden_size=512, num_actions=NUM_ACTIONS):
         super(MLP, self).__init__()
         self.fc1 = nn.Linear(input_size, hidden_size)
-        self.fc2 = nn.Linear(hidden_size, num_actions)
+        self.fc2 = nn.Linear(hidden_size, hidden_size)
+        self.fc3 = nn.Linear(hidden_size, num_actions)
         self._init_weights()
     
     def _init_weights(self):
@@ -58,11 +59,56 @@ class MLP(nn.Module):
         nn.init.zeros_(self.fc1.bias)
         nn.init.xavier_uniform_(self.fc2.weight)
         nn.init.zeros_(self.fc2.bias)
+        nn.init.xavier_uniform_(self.fc3.weight)
+        nn.init.zeros_(self.fc3.bias)
 
     def forward(self, x):
         x = F.relu(self.fc1(x))        
-        x = F.softmax(self.fc2(x), dim=-1)
+        x = F.relu(self.fc2(x))        
+        x = F.softmax(self.fc3(x), dim=-1)
         return x
+
+class ResidualBlock(nn.Module):
+    def __init__(self, hidden_size):
+        super(ResidualBlock, self).__init__()
+        self.block = nn.Sequential(
+            nn.Linear(hidden_size, hidden_size),
+            nn.ReLU(),
+            nn.Linear(hidden_size, hidden_size),
+        )
+        self._init_weights()
+
+    def _init_weights(self):
+        for layer in self.block:
+            if isinstance(layer, nn.Linear):
+                nn.init.kaiming_normal_(layer.weight, mode='fan_in', nonlinearity='relu')
+                nn.init.zeros_(layer.bias)
+
+    def forward(self, x):
+        return x + self.block(x)
+
+
+class ResNet(nn.Module):
+    def __init__(self, input_size=STATE_LEN, hidden_size=512, num_blocks=3, num_actions=NUM_ACTIONS):
+        super(ResNet, self).__init__()
+        self.initial_fc = nn.Linear(input_size, hidden_size)
+        self.res_blocks = nn.ModuleList([
+            ResidualBlock(hidden_size) for _ in range(num_blocks)
+        ])
+        self.final_fc = nn.Linear(hidden_size, num_actions)
+        self._init_weights()
+
+    def _init_weights(self):
+        nn.init.kaiming_normal_(self.initial_fc.weight, nonlinearity='relu')
+        nn.init.zeros_(self.initial_fc.bias)
+        nn.init.zeros_(self.final_fc.weight)
+        nn.init.zeros_(self.final_fc.bias)
+        
+    def forward(self, x):
+        x = F.relu(self.initial_fc(x))
+        for block in self.res_blocks:
+            x = block(x)        
+        return F.softmax(self.final_fc(x), dim=-1)
 
 def loss(output, target):
     return -torch.mean(torch.sum(target * torch.log(output + 1e-10), dim=1))
@@ -153,8 +199,10 @@ def train():
     device = "mps" if torch.backends.mps.is_available() else "cpu"
     print(f'device: {device}')
 
-    model_path = './data/models/mlp_10k.pth'
-    model = MLP(input_size=STATE_LEN, hidden_size=100, num_actions=NUM_ACTIONS)
+    model_path = './data/models/mlp_wl.pth'
+    model = MLP(hidden_size=512)
+    # model_path = './data/models/resnet_10k.pth'
+    # model = ResNet(hidden_size=512, num_blocks=3)
     # model.load_state_dict(torch.load(model_path))
 
     train_dataset = SplendorDataset(data_fname_prefix='./data/train/iter0')
@@ -164,14 +212,14 @@ def train():
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=5e-3, weight_decay=1e-4)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-4)
     criterion = loss
 
     train_data_entropy = data_loss(train_loader, criterion)
     val_data_entropy = data_loss(val_loader, criterion)
     print(f'train data entropy: {train_data_entropy:.4f}, val data entropy: {val_data_entropy:.4f}')
 
-    train_loop(model, train_loader, val_loader, optimizer, criterion, device, num_epochs=5, verbose=True)
+    train_loop(model, train_loader, val_loader, optimizer, criterion, device, num_epochs=20, verbose=True)
 
     torch.save(model.state_dict(), model_path)
     print(f'Final model is saved to {model_path}')

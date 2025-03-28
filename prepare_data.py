@@ -94,22 +94,26 @@ def prepare_data(traj_file, data_fname_prefix, num_players = 2):
     num_states = 0
     num_traj = 0
     for traj in traj_loader(traj_file):
+        if len(traj.actions) > 105: # filter out long games
+            continue
         state = traj.initial_state.copy()
         for action_num in range(len(traj.actions)):
             action = traj.actions[action_num]
             if state.active_player() != CHANCE_PLAYER: # ignore chance nodes
-                state_vec = state_encoder.state_to_vec(state)
-                states.append(np.packbits(state_vec)) # compressed bytes
-                # actions.append(ACTION_ID[str(action)]) # ints
-                rewards.append(traj.rewards[state.active_player()]) # 0 or 1 
-                if traj.freqs:
-                    freq_vec = [0.0] * len(ACTION_ID)
-                    sum_count = sum([c for c in traj.freqs[action_num].values()])
-                    for action_str, count in traj.freqs[action_num].items():
-                        freq_vec[ACTION_ID[action_str]] = count / sum_count                    
-                    actions.append(freq_vec) # probability distribution over all actions
-                
-                num_states += 1
+                reward = traj.rewards[state.active_player()]
+                if reward > 0.5: # select only winer moves
+                    state_vec = state_encoder.state_to_vec(state)
+                    states.append(np.packbits(state_vec)) # compressed bytes
+                    # actions.append(ACTION_ID[str(action)]) # ints
+                    rewards.append(reward) # 0 or 1 
+                    if traj.freqs:
+                        freq_vec = [0.0] * len(ACTION_ID)
+                        sum_count = sum([c for c in traj.freqs[action_num].values()])
+                        for action_str, count in traj.freqs[action_num].items():
+                            freq_vec[ACTION_ID[action_str]] = count / sum_count                    
+                        actions.append(freq_vec) # probability distribution over all actions
+                    
+                    num_states += 1
 
             state.apply_action(action)
 
@@ -125,5 +129,5 @@ def prepare_data(traj_file, data_fname_prefix, num_players = 2):
 
 if __name__ == '__main__':
     # print(len(ALL_ACTIONS))
-    # prepare_data('./data/traj_dump_1k_cp.txt', './data/val/iter0')
-    prepare_data('./data/traj_dump_10k.txt', './data/train/iter0')
+    # prepare_data('./data/traj_dump_1k_cpw.txt', './data/val/iter0')
+    prepare_data('./data/traj_dump_10k_cpw.txt', './data/train/iter0')

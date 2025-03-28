@@ -78,7 +78,7 @@ public:
             }
             random_shuffle(node->children.begin(), node->children.end()); // Optional step
             if (!node->children.empty()) {
-                node = node->children[0]; // Assumes that the children are shuffled. Otherwize pick random index
+                node = _select_child(node);
                 state->apply_action(node->action);
             }
         }
@@ -93,6 +93,12 @@ public:
             // active_player may be none if we are at a chance node
             if (bp_node->active_player != CHANCE_PLAYER) {
                 bp_node->wins += rewards[bp_node->active_player];
+            } else {
+                if (!bp_node->children.empty()) {
+                    for (auto& r : rewards) {
+                        r /= bp_node->children.size();
+                    }
+                }
             }
             bp_node = bp_node->parent;
         }
@@ -152,6 +158,11 @@ public:
 
 private:
     std::shared_ptr<Node<ActionT>> _select_child(const std::shared_ptr<Node<ActionT>>& node) {
+        if (node->active_player == CHANCE_PLAYER) {
+            int random_idx = rand() % node->children.size();
+            return node->children[random_idx];
+        }
+
         // Use the first unexplored child, assuming the children array is shuffled
         for (const auto& child : node->children) {
             if (child->visits == 0) {
@@ -171,6 +182,9 @@ private:
                 max_ucb = ucb;
                 best_child = child;
             }
+        }
+        if (best_child == nullptr) {
+            throw std::runtime_error("Unable to find best child!");
         }
         return best_child;
     }
@@ -265,6 +279,12 @@ public:
             // active_player may be none if we are at a chance node
             if (bp_node->active_player != CHANCE_PLAYER) {
                 bp_node->wins += rewards[bp_node->active_player];
+            } else {
+                if (!bp_node->children.empty()) {
+                    for (auto& r : rewards) {
+                        r /= bp_node->children.size();
+                    }
+                }
             }
             bp_node = bp_node->parent;
         }
@@ -324,7 +344,12 @@ public:
 
 private:
     std::shared_ptr<Node<ActionT>> _select_child(const std::shared_ptr<Node<ActionT>>& node) {
-       // Find the max UCB child
+        if (node->active_player == CHANCE_PLAYER) {
+            int random_idx = rand() % node->children.size();
+            return node->children[random_idx];
+        }
+        
+        // Find the max UCB child
         double max_ucb = -1;
         std::shared_ptr<Node<ActionT>> best_child = nullptr;
         double parent_visits_sqrts = std::sqrt(node->visits);

@@ -52,7 +52,7 @@ class MCTS:
             for action in state.get_actions():
                 child_node = Node(action=action, active_player=state.active_player(), parent=node)
                 node.children.append(child_node)
-            node = random.choice(node.children)
+            node = self._select_child(node)
             state.apply_action(node.action)
 
         # Simulation
@@ -61,9 +61,11 @@ class MCTS:
         # Backpropagation
         while node is not None:
             node.visits += 1
-            # active_player may be None if we are at a chance node
-            if node.active_player is not None: 
+            if node.active_player != CHANCE_PLAYER: 
                 node.wins += rewards[node.active_player]
+            else:
+                if node.children:
+                    rewards = [r / len(node.children) for r in rewards]
             node = node.parent
     
     def _rollout(self, state: GameState):
@@ -94,6 +96,8 @@ class MCTS:
 
     def _select_child(self, node):
         '''Uses UCB-like criterion to select best node'''
+        if node.active_player == CHANCE_PLAYER:
+            return random.choice(node.children)
 
         unexplored = [c for c in node.children if c.visits == 0]
         if unexplored:
@@ -142,11 +146,16 @@ class PolicyMCTS(MCTS):
             node.visits += 1
             if node.active_player != CHANCE_PLAYER: 
                 node.wins += rewards[node.active_player]
+            else:
+                if node.children:
+                    rewards = [r / len(node.children) for r in rewards]
             node = node.parent
 
     def _select_child(self, node):
         '''Uses UCB-like criterion to select best node'''
-
+        if node.active_player == CHANCE_PLAYER:
+            return random.choice(node.children)
+        
         max_ucb = -1
         best_child = None
         parent_visits_sqrts = math.sqrt(node.visits)
