@@ -94,8 +94,8 @@ def prepare_data(traj_file, data_fname_prefix, num_players = 2):
     num_states = 0
     num_traj = 0
     for traj in traj_loader(traj_file):
-        if len(traj.actions) > 105: # filter out long games
-            continue
+        # if len(traj.actions) > 105: # filter out long games
+        #     continue
         state = traj.initial_state.copy()
         for action_num in range(len(traj.actions)):
             action = traj.actions[action_num]
@@ -129,5 +129,5 @@ def prepare_data(traj_file, data_fname_prefix, num_players = 2):
 
 if __name__ == '__main__':
     # print(len(ALL_ACTIONS))
-    # prepare_data('./data/traj_dump_1k_cpw.txt', './data/val/iter0')
-    prepare_data('./data/traj_dump_10k_cpw.txt', './data/train/iter0')
+    # prepare_data('./data/traj_dump_2k.txt', './data/val/iter0')
+    prepare_data('./data/traj_dump_20k.txt', './data/train/iter0')

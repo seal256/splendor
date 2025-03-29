@@ -37,10 +37,9 @@ int main(int argc, char* argv[]) {
         }
         input_file >> task_json;
     }
-    if (task_json.contains("random_seed")) {
-        unsigned int seed = task_json.at("random_seed");
-        std::srand(seed);
-    }
+    unsigned int seed = task_json.value("random_seed", std::time(0));
+    std::cout << "seed: " << seed << std::endl;
+    std::srand(seed);
 
     const std::string task_name = task_json.value("task", "run_games");
     if (task_name == "run_games") {

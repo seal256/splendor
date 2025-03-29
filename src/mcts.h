@@ -13,17 +13,19 @@
 
 namespace mcts {
 
+constexpr int UNKNOWN = -2;
+
 template<typename ActionT>
 struct Node {
     ActionT action; // the action that was applied to the parent and lead to this state
     Node<ActionT>* parent;
-    int active_player;
+    int active_player; // who's turn it is now, at the current state
     std::vector<std::shared_ptr<Node>> children;
     int visits;
-    double wins; // wins for the active_player (who's turn it is at the current step)
+    double wins; // wins for the parent's active_player (who took the action)
     double p; // prior action probability
 
-    Node(const ActionT& action = ActionT(), Node<ActionT>* parent = nullptr, int active_player = 0)
+    Node(const ActionT& action = ActionT(), Node<ActionT>* parent = nullptr, int active_player = UNKNOWN)
         : action(action), parent(parent), active_player(active_player), visits(0), wins(0), p(1.0) {}
 };
 
@@ -38,13 +40,15 @@ class MCTS {
 private:
     const std::shared_ptr<GameState<ActionT>> root_state;
     std::shared_ptr<Node<ActionT>> root;
-    MCTSParams params;
+    const MCTSParams params;
 
 public:
     MCTS(const std::shared_ptr<GameState<ActionT>> & state, const MCTSParams & params = MCTSParams())
         : root_state(state->clone()), params(params) {
         root = std::make_shared<Node<ActionT>>();
         root->active_player = root_state->active_player();
+        root->visits = 1;
+        _expand_node(root_state, root);
     }
 
     ActionT search() {
@@ -69,17 +73,17 @@ public:
             node = _select_child(node);
             state->apply_action(node->action);
         }
+        if (node->visits == 0) { // first visit of the node
+            node->active_player = state->active_player();
+        }
 
         // Expansion
         if (!state->is_terminal() && node->children.empty() && node->visits > 0) {
-            for (const auto& action : state->get_actions()) {
-                auto child_node = std::make_shared<Node<ActionT>>(action, node.get(), state->active_player());
-                node->children.push_back(child_node);
-            }
-            random_shuffle(node->children.begin(), node->children.end()); // Optional step
+            _expand_node(state, node);
             if (!node->children.empty()) {
                 node = _select_child(node);
                 state->apply_action(node->action);
+                node->active_player = state->active_player();
             }
         }
 
@@ -88,17 +92,19 @@ public:
 
         // Backpropagation
         Node<ActionT> * bp_node = node.get();
-        while (bp_node) {
+        while (bp_node->parent) {
             bp_node->visits++;
-            // active_player may be none if we are at a chance node
-            if (bp_node->active_player != CHANCE_PLAYER) {
-                bp_node->wins += rewards[bp_node->active_player];
-            } else {
+            if (bp_node->active_player == CHANCE_PLAYER) { // downscale the rewards that came from a chance node
                 if (!bp_node->children.empty()) {
                     for (auto& r : rewards) {
                         r /= bp_node->children.size();
                     }
                 }
+            }
+
+            int acting_player = bp_node->parent->active_player; // who made the move that lead to this state
+            if (acting_player != CHANCE_PLAYER) { // do not record wins for chance actions
+                bp_node->wins += rewards[acting_player];
             }
             bp_node = bp_node->parent;
         }
@@ -187,6 +193,15 @@ private:
             throw std::runtime_error("Unable to find best child!");
         }
         return best_child;
+    }
+
+    void _expand_node(const std::shared_ptr<GameState<ActionT>> state, std::shared_ptr<Node<ActionT>> node) {
+        // Adds children to the node using the corresponding game state
+        for (const auto& action : state->get_actions()) {
+            auto child_node = std::make_shared<Node<ActionT>>(action, node.get());
+            node->children.push_back(child_node);
+        }
+        random_shuffle(node->children.begin(), node->children.end()); // Optional step, that simplifies selection phase
     }
 
     std::vector<double> _rollout(std::shared_ptr<GameState<ActionT>> state) {

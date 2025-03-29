@@ -199,7 +199,7 @@ def train():
     device = "mps" if torch.backends.mps.is_available() else "cpu"
     print(f'device: {device}')
 
-    model_path = './data/models/mlp_wl.pth'
+    model_path = './data/models/mlp.pth'
     model = MLP(hidden_size=512)
     # model_path = './data/models/resnet_10k.pth'
     # model = ResNet(hidden_size=512, num_blocks=3)
@@ -212,7 +212,7 @@ def train():
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-4)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=3e-5)
     criterion = loss
 
     train_data_entropy = data_loss(train_loader, criterion)

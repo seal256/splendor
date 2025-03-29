@@ -1,29 +1,20 @@
 {
     "agents": [
         {
-            "type": "PolicyMCTSAgent",
+            "type": "MCTSAgent",
             "iterations": 1000,
             "exploration": 1.4,
-            "weighted_selection_moves": 10,
-            "policy" : {
-                "type" : "ConstantPolicy",
-                "probs": [0.0034,0.0064,0.0039,0.0033,0.0044,0.0042,0.0293,0.0329,0.0352,0.0330,0.0327,0.0370,0.0239,0.0235,0.0285,0.0286,0.0215,0.0189,0.0214,0.0220,0.0136,0.0134,0.0150,0.0168,0.0101,0.0102,0.0108,0.0143,0.0512,0.0572,0.0647,0.0846,0.0238,0.0238,0.0250,0.0285,0.0047,0.0057,0.0059,0.0068,0.0404,0.0355,0.0240]
-            }
+            "weighted_selection_moves": -1
         },
         {
-            "type": "PolicyMCTSAgent",
+            "type": "MCTSAgent",
             "iterations": 1000,
             "exploration": 1.4,
-            "weighted_selection_moves": 10,
-            "policy" : {
-                "type" : "ConstantPolicy",
-                "probs": [0.0034,0.0064,0.0039,0.0033,0.0044,0.0042,0.0293,0.0329,0.0352,0.0330,0.0327,0.0370,0.0239,0.0235,0.0285,0.0286,0.0215,0.0189,0.0214,0.0220,0.0136,0.0134,0.0150,0.0168,0.0101,0.0102,0.0108,0.0143,0.0512,0.0572,0.0647,0.0846,0.0238,0.0238,0.0250,0.0285,0.0047,0.0057,0.0059,0.0068,0.0404,0.0355,0.0240]
-            }
+            "weighted_selection_moves": -1
         }
     ],
-    "num_games": 2000,
+    "num_games": 1000,
     "num_workers": 10,
-    "random_seed": 19,
     "verbose": false,
     "save_freqs": true,
     "dump_trajectories": "data/traj_dump.txt"
