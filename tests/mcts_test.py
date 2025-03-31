@@ -3,7 +3,7 @@ import random
 from tqdm import tqdm
 import pytest
 
-from pysplendor.mcts import MCTS
+from pysplendor.mcts import MCTS, MCTSParams
 from pysplendor.agents import MCTSAgent, RandomAgent
 from pysplendor.game import run_one_game
 
@@ -56,7 +56,8 @@ class TicTacToe:
 def test_mcts_vs_random_agent():
     """Test that the MCTS implementation never loses in TicTacToe against a random agent."""
 
-    agents = [RandomAgent(), MCTSAgent(iterations=400)]
+    # mcts_params = MCTSParams(iterations= 1000)
+    agents = [RandomAgent(), MCTSAgent()]
     mcts_player_id = 1
 
     for _ in range(100):

@@ -23,7 +23,7 @@ struct Node {
     std::vector<std::shared_ptr<Node>> children;
     int visits;
     double wins; // wins for the acting_player (who took the action)
-    double p; // prior action probability
+    double p; // prior action probability provided by an action policy
 
     Node(const ActionT& action = ActionT(), Node<ActionT>* parent = nullptr, int acting_player = UNKNOWN)
         : action(action), parent(parent), acting_player(acting_player), visits(0), wins(0), p(1.0) {}

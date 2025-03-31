@@ -16,11 +16,11 @@ class HumanPlayer(Agent):
         return Action.from_str(action_str)
 
 class MCTSAgent(Agent):
-    def __init__(self, **mcts_params):
+    def __init__(self, mcts_params = None):
         self.mcts_params = mcts_params
 
     def get_action(self, game_state: GameState):
-        mcts = MCTS(game_state, **self.mcts_params)
+        mcts = MCTS(game_state, self.mcts_params)
         action = mcts.search()
         return action
 

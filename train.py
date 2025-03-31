@@ -4,7 +4,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader, Dataset, random_split
 import numpy as np
+from sklearn.metrics import accuracy_score, classification_report
 
+from prepare_data import ALL_ACTIONS
 STATE_LEN = 1052
 NUM_ACTIONS = 43
 
@@ -125,8 +127,8 @@ def data_loss(data_loader, criterion):
 def train_epoch(model, data_loader, optimizer, criterion, device):
     model.train()
     total_loss = 0.0
-    action_correct = 0
-    num_samples = 0
+    classif_pred = []
+    classif_correct = []
     
     for X_batch, y_action_batch, _ in data_loader:
         X_batch, y_action_batch = X_batch.to(device), y_action_batch.to(device)
@@ -141,16 +143,16 @@ def train_epoch(model, data_loader, optimizer, criterion, device):
         
         total_loss += loss.item()
         
-        action_correct += torch.sum(torch.argmax(action_output, dim=1) == torch.argmax(y_action_batch, dim=1)).item()
-        num_samples += y_action_batch.size(0)
+        classif_pred.extend(torch.argmax(action_output, dim=1).cpu().numpy())
+        classif_correct.extend(torch.argmax(y_action_batch, dim=1).cpu().numpy())
     
-    return total_loss / len(data_loader), action_correct / num_samples
+    return total_loss / len(data_loader), classif_pred, classif_correct
 
 def validate(model, data_loader, criterion, device):
     model.eval()
     total_loss = 0.0
-    action_correct = 0
-    num_samples = 0
+    classif_pred = []
+    classif_correct = []
     
     with torch.no_grad():
         for X_batch, y_action_batch, _ in data_loader:
@@ -159,10 +161,10 @@ def validate(model, data_loader, criterion, device):
             action_output = model(X_batch)
             total_loss += criterion(action_output, y_action_batch).item()
 
-            action_correct += torch.sum(torch.argmax(action_output, dim=1) == torch.argmax(y_action_batch, dim=1)).item()
-            num_samples += y_action_batch.size(0)
+            classif_pred.extend(torch.argmax(action_output, dim=1).cpu().numpy())
+            classif_correct.extend(torch.argmax(y_action_batch, dim=1).cpu().numpy())
 
-    return total_loss / len(data_loader), action_correct / num_samples
+    return total_loss / len(data_loader), classif_pred, classif_correct
 
 def print_weigths(model):
     for name, param in model.named_parameters():
@@ -177,15 +179,20 @@ def train_loop(model, train_loader, val_loader, optimizer, criterion, device, nu
     model = model.to(device)
     
     for epoch in range(num_epochs):
-        train_loss, train_accuracy = train_epoch(model, train_loader, optimizer, criterion, device)
-        val_loss, val_accuracy = validate(model, val_loader, criterion, device)
+        train_loss, train_classif_pred, train_classif_correct = train_epoch(model, train_loader, optimizer, criterion, device)
+        val_loss, val_classif_pred, val_classif_correct = validate(model, val_loader, criterion, device)
         
+        train_accuracy = accuracy_score(train_classif_correct, train_classif_pred)
+        val_accuracy = accuracy_score(val_classif_correct, val_classif_pred)
+
         curr_time = datetime.now().strftime("%H:%M:%S")
         print(f"{curr_time} Epoch {epoch+1}/{num_epochs}, "
               f"train loss: {train_loss:.4f}, accuracy: {train_accuracy:.4f}, "
               f"val loss: {val_loss:.4f}, accuracy: {val_accuracy:.4f}")
+        
         if verbose:
             print_weigths(model)
+            print(classification_report(val_classif_correct, val_classif_pred, target_names = ALL_ACTIONS, zero_division=0))
 
     print("done!")
 

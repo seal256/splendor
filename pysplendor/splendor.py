@@ -164,9 +164,9 @@ class Action:
             return self.type
         if self.type == ActionType.take: 
             return f'{self.type}{self.gems}'
-        elif self.type == ActionType.reserve or self.type == ActionType.purchase or self.type == ActionType.new_table_card:
+        elif self.type == ActionType.reserve or self.type == ActionType.purchase:
             return f'{self.type}{self.level}n{self.pos}'
-        elif self.type == ActionType.purchase_hand:
+        elif self.type == ActionType.purchase_hand or self.type == ActionType.new_table_card:
             return f'{self.type}{self.pos}'
         else:
             raise ValueError('Unknown action type')
