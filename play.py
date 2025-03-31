@@ -7,10 +7,18 @@ from pysplendor.game_state import GameState, CHANCE_PLAYER
 from pysplendor.agents import RandomAgent, MCTSAgent, Agent
 from pysplendor.splendor import SplendorGameState, Action
 from pysplendor.game import run_one_game, Trajectory, traj_loader
-from pysplendor.mcts import PolicyMCTS, Policy, MCTSParams
+from pysplendor.mcts import MCTS, PolicyMCTS, Policy, MCTSParams
 from prepare_data import SplendorGameStateEncoder, ALL_ACTIONS, ACTION_ID
 from train import STATE_LEN, NUM_ACTIONS, MLP
 
+class ConstantPolicy(Policy):
+    def __init__(self, probs, action_ids):
+        self.probs = probs
+        self.action_ids = action_ids
+
+    def predict(self, game_state: GameState):
+        action_probs = [self.probs[self.action_ids.get(str(a))] for a in game_state.get_actions()]
+        return action_probs
 
 class NNPolicy(Policy):
     def __init__(self, model, state_encoder, action_ids):
@@ -37,7 +45,7 @@ class PolicyMCTSAgent(Agent):
         return action
 
 def load_mlp_model(model_path):
-    model = MLP(STATE_LEN, 100, NUM_ACTIONS)
+    model = MLP(STATE_LEN, 512, NUM_ACTIONS)
     state_dict = torch.load(model_path)
     model.load_state_dict(state_dict)
     model.eval()
@@ -71,12 +79,29 @@ def tournament_parallel(agents, num_games, num_workers=8):
         print(f'player {id} wins: {wins}')
 
 def print_game_record(traj: Trajectory):
+    '''Displays a recorded trajectory to console with some extra info. Debugging tool.'''
+
+    probs = [1/len(ACTION_ID)] * len(ACTION_ID)
+    mcts_params = MCTSParams(exploration=5)
+    const_policy = ConstantPolicy(probs, ACTION_ID)
+    model = load_mlp_model('./data/models/mlp.pth')
+    state_encoder = SplendorGameStateEncoder(2)
+    nn_policy = NNPolicy(model, state_encoder, ACTION_ID)
+
     game_state = traj.initial_state.copy()
     for n, action in enumerate(traj.actions):
         print(game_state)
         print(f'active_player: {game_state.active_player()} action: {action}')
         if traj.freqs:
-            print(traj.freqs[n])
+            if game_state.active_player() != CHANCE_PLAYER:
+                recorded_visits = traj.freqs[n]
+                print(f'recorded: {recorded_visits}')
+                mcts = PolicyMCTS(game_state, const_policy, mcts_params)
+                mcts.search()
+                mcts_vistis = {str(action): count for action, count in  mcts.root_visits()}
+                probs = nn_policy.predict(game_state)
+                visits_str = ''.join(sorted([f'{a}: {recorded_visits[a]}, {mcts_vistis[a]}, {probs[n]:.4f}\t' for n, a in enumerate(mcts_vistis.keys())]))
+                print(f'recorded vs mcts: {visits_str}')
         print()
         game_state.apply_action(action)
     

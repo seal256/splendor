@@ -226,7 +226,7 @@ private:
     const std::shared_ptr<GameState<ActionT>> root_state;
     std::shared_ptr<Node<ActionT>> root;
     const std::shared_ptr<Policy<ActionT>> policy;
-    MCTSParams params;
+    const MCTSParams params;
     
 public:
     PolicyMCTS(const std::shared_ptr<GameState<ActionT>> & state, const std::shared_ptr<Policy<ActionT>>& policy, const MCTSParams & params = MCTSParams())
