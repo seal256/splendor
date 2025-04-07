@@ -150,6 +150,6 @@ if __name__ == '__main__':
     # run_tournament()
 
     tloader = traj_loader('data/traj_dump.txt')
-    for _ in range(2):
+    for _ in range(1):
         traj = next(tloader)
     print_game_record(traj)

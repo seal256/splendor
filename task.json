@@ -2,30 +2,13 @@
     "agents": [
         {
             "type": "MCTSAgent",
-            "iterations": 2000,
-            "exploration": 1.4,
-            "weighted_selection_moves": -1,
-            "max_choice_children": 5,
-            "max_rollout_len": 500,
-            "use_rollout_policy": false,
-            "value_weight": 0.5,
-            "policy" : {
-                "type" : "NNPolicy",
-                "model_path": "/Users/seal/projects/splendor/data/models/mlp_10k.pt",
-                "num_players": 2            }      
+            "iterations": 1000,
+            "max_choice_children": 1 
         },
         {
             "type": "MCTSAgent",
             "iterations": 1000,
-            "exploration": 1.4,
-            "weighted_selection_moves": -1,
-            "max_choice_children": 5,
-            "max_rollout_len": 500,
-            "use_rollout_policy": false,
-            "policy" : {
-                "type" : "ConstantPolicy",
-                "probs": [0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233]
-            }      
+            "max_choice_children": 5
         }
     ],
     "num_games": 1000,
