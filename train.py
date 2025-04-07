@@ -197,9 +197,9 @@ def train_loop(model, train_loader, val_loader, optimizer, criterion, device, nu
     print("done!")
 
 def train():
-    seed = 1828
-    np.random.seed(seed)
-    torch.manual_seed(seed)
+    # seed = 1828
+    # np.random.seed(seed)
+    # torch.manual_seed(seed)
 
     batch_size = 128
 
@@ -219,14 +219,14 @@ def train():
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=3e-5)
+    optimizer = torch.optim.Adam(model.parameters(), lr=3e-4, weight_decay=3e-4)
     criterion = loss
 
     train_data_entropy = data_loss(train_loader, criterion)
     val_data_entropy = data_loss(val_loader, criterion)
     print(f'train data entropy: {train_data_entropy:.4f}, val data entropy: {val_data_entropy:.4f}')
 
-    train_loop(model, train_loader, val_loader, optimizer, criterion, device, num_epochs=20, verbose=True)
+    train_loop(model, train_loader, val_loader, optimizer, criterion, device, num_epochs=30, verbose=True)
 
     torch.save(model.state_dict(), model_path)
     print(f'Final model is saved to {model_path}')

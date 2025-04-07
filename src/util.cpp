@@ -1,5 +1,6 @@
 #include <iostream>
 #include <fstream>
+#include <format>
 
 #include "util.h"
 #include "nn_policy.h"
@@ -56,17 +57,29 @@ void splendor_stats(const std::vector<Trajectory<Action>>& trajectories) {
         }
     }
 
+    // short report
+    for (int player = 0; player < num_players; ++player) {
+        double mean_score = total_scores[player] / num_games;
+        double conf_interval = 2.58 * std::sqrt(mean_score * (1.0 - mean_score) / num_games); // 99% confidence
+        std::cout << std::format("{:.3f} ({:.2f}), ",  mean_score, conf_interval);
+    }
+    std::cout << std::endl;
+
     for (int player = 0; player < num_players; ++player) {
         auto cards_avg_dev = avg_dev(card_counts[player]);
         double mean_score = total_scores[player] / num_games;
         double conf_interval = 2.58 * std::sqrt(mean_score * (1.0 - mean_score) / num_games); // 99% confidence
-        std::cout << "player " << player << ":" 
-            << " total score: " << total_scores[player]
-            << " mean score: " << mean_score
-            << " score conf interval: " << conf_interval
-            << " cards mean: " << cards_avg_dev.first
-            << " cards std dev: " << cards_avg_dev.second
-            << "\n";
+        std::cout << std::format(
+            "player {}: total score: {:.1f}, mean score: {:.3f}, "
+            "score conf interval: {:.3f}, cards mean: {:.1f}, "
+            "cards std dev: {:.1f}\n",
+            player,
+            total_scores[player],
+            mean_score,
+            conf_interval,
+            cards_avg_dev.first,
+            cards_avg_dev.second
+        );
     }
 
     auto len_mean_dev = avg_dev(game_lengths);

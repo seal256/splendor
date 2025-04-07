@@ -33,11 +33,15 @@ struct MCTSParams {
     int iterations = 1000; // number of iterations
     double exploration = 1.4; // exploration constant C
     int weighted_selection_moves = -1; // before this move number in the game best action will be selected with weights, then greedy
+    int max_choice_children = 100;
+    double value_weight = 0.5; // Weight for combining rollout and value estimates
+    int max_rollout_len = 500;
+    bool use_rollout_policy = false;
 };
 
 template<typename ActionT>
 class MCTS {
-private:
+protected:
     const std::shared_ptr<GameState<ActionT>> root_state;
     std::shared_ptr<Node<ActionT>> root;
     const MCTSParams params;
@@ -49,12 +53,12 @@ public:
     ActionT search() {
         // Grows the search tree and returns the best expected action
         for (int iter = 0; iter < params.iterations; ++iter) {
-            _search_iteration();
+            this->_search_iteration();
         }
         return best_action();
     }
 
-    void _search_iteration() {
+    virtual void _search_iteration() {
         // This implementation is suited for memory intensive game setups: 
         // game states are big, next state computation is relatively cheap.  
         // In such conditions it is more efficient to store only action in each node, 
@@ -65,7 +69,7 @@ public:
         auto node = root;
         auto state = root_state->clone();
         while (!node->children.empty() && node->visits > 0) { // visits > 0 assures that we performed at least one rollout from each new node
-            node = _select_child(state, node);
+            node = this->_select_child(state, node);
             state->apply_action(node->action);
         }
 
@@ -77,14 +81,17 @@ public:
                 node->children.push_back(child_node);
             }
             random_shuffle(node->children.begin(), node->children.end()); // Optional step, that simplifies selection phase
+            if (acting_player == CHANCE_PLAYER && node->children.size() > params.max_choice_children) {
+                node->children.resize(params.max_choice_children);
+            }
             if (!node->children.empty()) {
-                node = _select_child(state, node);
+                node = this->_select_child(state, node);
                 state->apply_action(node->action);
             }
         }
 
         // Simulation
-        std::vector<double> rewards = _rollout(state);
+        std::vector<double> rewards = this->_rollout(state);
 
         // Backpropagation
         Node<ActionT> * bp_node = node.get();
@@ -159,7 +166,7 @@ public:
     }
 
 private:
-    std::shared_ptr<Node<ActionT>> _select_child(const std::shared_ptr<GameState<ActionT>> state, const std::shared_ptr<Node<ActionT>> node) {
+    virtual std::shared_ptr<Node<ActionT>> _select_child(const std::shared_ptr<GameState<ActionT>> state, const std::shared_ptr<Node<ActionT>> node) {
         if (state->active_player() == CHANCE_PLAYER) {
             int random_idx = rand() % node->children.size();
             return node->children[random_idx];
@@ -191,7 +198,7 @@ private:
         return best_child;
     }
 
-    std::vector<double> _rollout(std::shared_ptr<GameState<ActionT>> state) {
+    virtual std::vector<double> _rollout(std::shared_ptr<GameState<ActionT>> state) {
         // Simulates a random playout from the given state
         while (!state->is_terminal()) {
             auto actions = state->get_actions();
@@ -261,6 +268,9 @@ public:
                 node->children.push_back(child_node);
             }
             random_shuffle(node->children.begin(), node->children.end()); // Optional step, that simplifies selection phase
+            if (acting_player == CHANCE_PLAYER && node->children.size() > params.max_choice_children) {
+                node->children.resize(params.max_choice_children);
+            }
             if (!node->children.empty()) {
                 node = _select_child(state, node);
                 state->apply_action(node->action);
@@ -343,7 +353,7 @@ public:
     }
 
 private:
-    std::shared_ptr<Node<ActionT>> _select_child(const std::shared_ptr<GameState<ActionT>> state, const std::shared_ptr<Node<ActionT>>& node) {
+    std::shared_ptr<Node<ActionT>> _select_child(const std::shared_ptr<GameState<ActionT>> state, const std::shared_ptr<Node<ActionT>> node) {
         if (state->active_player() == CHANCE_PLAYER) {
             int random_idx = rand() % node->children.size();
             return node->children[random_idx];
@@ -381,5 +391,156 @@ private:
     }
 
 };
+
+template<typename ActionT>
+class Value {
+public:
+    // Estimates the value of the game_state for each player
+    virtual std::vector<double> predict(const std::shared_ptr<GameState<ActionT>> game_state) const = 0;
+    virtual ~Value() {};
+};
+
+template<typename ActionT>
+class PVMCTS : public MCTS<ActionT> {
+private:
+    const std::shared_ptr<Policy<ActionT>> policy;
+    const std::shared_ptr<Value<ActionT>> value;
+    
+public:
+    PVMCTS(const std::shared_ptr<GameState<ActionT>>& state, 
+           const std::shared_ptr<Policy<ActionT>>& policy,
+           const std::shared_ptr<Value<ActionT>>& value,
+           const MCTSParams& params = MCTSParams())
+        : MCTS<ActionT>(state, params), 
+          policy(policy),
+          value(value) {}
+
+    void _search_iteration() override {       
+        // Selection
+        auto node = this->root;
+        auto state = this->root_state->clone();
+        while (!node->children.empty() && node->visits > 0) {
+            node = this->_select_child(state, node);
+            state->apply_action(node->action);
+        }
+
+        // Expansion
+        if (!state->is_terminal() && node->children.empty() && node->visits > 0) {
+            const std::vector<ActionT> actions = state->get_actions(); 
+            int acting_player = state->active_player();
+            const std::vector<double> probs = acting_player == CHANCE_PLAYER ?
+                std::vector<double>(actions.size(), 1.0) : policy->predict(state); 
+            for (size_t id = 0; id < actions.size(); id++) {
+                auto child_node = std::make_shared<Node<ActionT>>(actions[id], node.get(), acting_player);
+                child_node->p = probs[id];
+                node->children.push_back(child_node);
+            }
+            random_shuffle(node->children.begin(), node->children.end());
+            if (acting_player == CHANCE_PLAYER && node->children.size() > this->params.max_choice_children) {
+                node->children.resize(this->params.max_choice_children);
+            }
+            if (!node->children.empty()) {
+                node = this->_select_child(state, node);
+                state->apply_action(node->action);
+            }
+        }
+
+        // Simulation
+        std::vector<double> predicted_values = value->predict(state);
+        std::vector<double> rewards = this->params.use_rollout_policy ? this->ploicy_rollout(state) : this->_rollout(state);
+        
+        // Combine rollout and value estimates
+        if (state->is_terminal()) { // rollout reached terminal state
+            double wv = this->params.value_weight;
+            for (size_t player = 0; player < rewards.size(); ++player) {
+                rewards[player] = (1.0 - wv) * rewards[player] + wv * predicted_values[player];
+            }
+        }
+
+        // Backpropagation
+        Node<ActionT> * bp_node = node.get();
+        while (bp_node) {
+            bp_node->visits++;
+            if (!bp_node->parent) {
+                break;
+            }
+            if (bp_node->acting_player == CHANCE_PLAYER) {
+                if (!bp_node->parent->children.empty()) {
+                    for (auto& r : rewards) {
+                        r /= bp_node->parent->children.size();
+                    }
+                }
+            } else {
+                bp_node->wins += rewards[bp_node->acting_player];
+            }
+            bp_node = bp_node->parent;
+        }
+    }
+
+private:
+    virtual std::shared_ptr<Node<ActionT>> _select_child(const std::shared_ptr<GameState<ActionT>> state, const std::shared_ptr<Node<ActionT>> node) override {
+        if (state->active_player() == CHANCE_PLAYER) {
+            int random_idx = rand() % node->children.size();
+            return node->children[random_idx];
+        }
+        
+        // Find the max UCB child
+        double max_ucb = -1;
+        std::shared_ptr<Node<ActionT>> best_child = nullptr;
+        double parent_visits_sqrts = std::sqrt(node->visits);
+        for (const auto& child : node->children) {
+            double exploitation_term = child->visits > 0 ? child->wins / child->visits : 0;
+            double exploration_term = child->p * parent_visits_sqrts / (child->visits + 1);
+            double ucb = exploitation_term + this->params.exploration * exploration_term;
+            if (ucb > max_ucb) {
+                max_ucb = ucb;
+                best_child = child;
+            }
+        }
+        if (best_child == nullptr) {
+            throw std::runtime_error("Unable to find best child!");
+        }
+        return best_child;
+    }
+
+    virtual std::vector<double> _rollout(std::shared_ptr<GameState<ActionT>> state) override {
+        // Simulates a random playout from the given state
+        for (int t = 0; t < this->params.max_rollout_len && !state->is_terminal(); t++) {
+            auto actions = state->get_actions();
+            if (actions.empty()) 
+                break;
+            int random_idx = rand() % actions.size();
+            state->apply_action(actions[random_idx]);
+        }
+        if (state->is_terminal()) {
+            return state->rewards();
+        } else {
+            return value->predict(state);
+        }
+    }
+
+    std::vector<double> ploicy_rollout(std::shared_ptr<GameState<ActionT>> state) {
+        // Simulates a policy directed playout from the given state
+        for (int t = 0; t < this->params.max_rollout_len && !state->is_terminal(); t++) {
+            auto actions = state->get_actions();
+            if (actions.empty()) 
+                break;
+            int random_idx;
+            if (state->active_player() == CHANCE_PLAYER) {
+                random_idx = rand() % actions.size();
+            } else {
+                const auto probs = this->policy->predict(state);
+                random_idx = weighted_random_choice(probs);
+            }
+            state->apply_action(actions[random_idx]);
+        }
+        if (state->is_terminal()) {
+            return state->rewards();
+        } else {
+            return value->predict(state);
+        }
+    }
+};
+
 
 }; // namespace mcts

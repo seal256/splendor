@@ -112,7 +112,8 @@ std::vector<int> SplendorGameStateEncoder::player_to_vec(const SplendorPlayerSta
     
     std::vector<int> hand_cards(rules_->max_hand_cards * card_vec_len_, 0);
     for (size_t n = 0; n < player.hand_cards.size(); ++n) {
-        auto card_vec = card_to_vec(*player.hand_cards[n]);
+        auto card = player.hand_cards[n];
+        auto card_vec = card_to_vec(*card);
         std::copy(card_vec.begin(), card_vec.end(), hand_cards.begin() + n * card_vec_len_);
     }
     
@@ -166,6 +167,23 @@ std::vector<int> SplendorGameStateEncoder::state_to_vec(const SplendorGameState&
     return result;
 }
 
+AccumValue::AccumValue(double score_norm) 
+    : score_norm_(score_norm) {}
+
+std::vector<double> AccumValue::predict(const std::shared_ptr<GameState<splendor::Action>> game_state) const {
+    auto splendor_state = std::dynamic_pointer_cast<SplendorGameState>(game_state);
+    if (!splendor_state) {
+        throw std::runtime_error("AccumValue requires SplendorGameState");
+    }
+
+    std::vector<double> values;
+    values.reserve(splendor_state->players.size());
+    
+    for (const auto& player : splendor_state->players) {
+        values.push_back(player.points / score_norm_);
+    }
+    return values;
+}
 
 } // namespace splendor
 
@@ -182,6 +200,18 @@ mcts::MCTSParams parse_mcts_params(const json& jsn) {
     if (jsn.contains("weighted_selection_moves")) {
         params.weighted_selection_moves = jsn["weighted_selection_moves"];
     }
+    if (jsn.contains("max_rollout_len")) {
+        params.max_rollout_len = jsn["max_rollout_len"];
+    }
+    if (jsn.contains("max_choice_children")) {
+        params.max_choice_children = jsn["max_choice_children"];
+    }
+    if (jsn.contains("use_rollout_policy")) {
+        params.use_rollout_policy = jsn["use_rollout_policy"];
+    }
+    if (jsn.contains("value_weight")) {
+        params.value_weight = jsn["value_weight"];
+    }    
     return params;
 }
 
@@ -228,6 +258,15 @@ std::shared_ptr<Agent<Action>> construct_agent(const json& jsn) {
         }
         auto policy = construct_policy(jsn["policy"]);
         return std::make_shared<PolicyMCTSAgent<Action>>(policy, params);
+
+    } else if (agent_type == "PVMCTSAgent") {
+        mcts::MCTSParams params = parse_mcts_params(jsn);
+        if (!jsn.contains("policy")) {
+            throw std::runtime_error("PolicyMCTSAgent must contain a 'policy' section.");
+        }
+        auto policy = construct_policy(jsn["policy"]);
+        auto value = std::make_shared<splendor::AccumValue>();
+        return std::make_shared<PVMCTSAgent<Action>>(policy, value, params);
 
     // } else if (agent_type == "CheatMCTSAgent") {
     //     mcts::MCTSParams params = parse_mcts_params(jsn);

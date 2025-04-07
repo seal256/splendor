@@ -3,7 +3,6 @@ set(SOURCE_FILES
     splendor.cpp
     util.cpp
     splendor_agents.cpp
-    random_util.cpp
 )
 
 add_executable(splendor ${SOURCE_FILES})

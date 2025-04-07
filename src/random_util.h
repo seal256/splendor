@@ -10,4 +10,18 @@ void random_shuffle(RandomIt first, RandomIt last) {
     std::shuffle(first, last, g);
 }
 
-size_t weighted_random_choice(const std::vector<int>& weights);
+template<typename T>
+size_t weighted_random_choice(const std::vector<T>& weights) {
+    int total = std::accumulate(weights.begin(), weights.end(), T());
+    int threshold = rand() % total;
+    
+    T cumulative = 0;
+    for (size_t n = 0; n < weights.size(); ++n) {
+        cumulative += weights[n];
+        if (cumulative >= threshold) {
+            return n;
+        }
+    }
+    
+    return weights.size() - 1;
+}

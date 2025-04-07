@@ -33,6 +33,10 @@ class GameState(ABC):
         '''Copy of the state, that allows independent game continuation from the new object'''
         pass
 
+    @abstractmethod
+    def move_num(self):
+        pass
+
 class Agent(ABC):
     '''Game player'''
 

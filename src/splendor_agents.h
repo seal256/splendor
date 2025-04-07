@@ -2,6 +2,7 @@
 
 #include "agents.h"
 #include "splendor.h"
+#include "mcts.h"
 
 #include "json.hpp"
 
@@ -32,5 +33,15 @@ public:
     
 };
 
-}
+class AccumValue : public mcts::Value<splendor::Action> {
+    private:
+        const double score_norm_;
+        
+    public:
+        explicit AccumValue(double score_norm = 15.0);
+        
+        std::vector<double> predict(const std::shared_ptr<GameState<splendor::Action>> game_state) const override;
+    };
+};
+
 

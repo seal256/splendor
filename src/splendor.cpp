@@ -325,7 +325,7 @@ std::vector<Action> SplendorGameState::get_actions() const {
     }
 
     // Three distinct gems
-    if (player.gems.sum() < rules->max_player_gems - rules->max_gems_take) {
+    if (player.gems.sum() <= rules->max_player_gems - rules->max_gems_take) {
         std::vector<int> available_gems;
         for (int gem = 0; gem < NUM_GEMS - 1; ++gem) { // Exclude gold gem
             if (gems.gems[gem] > 0) {

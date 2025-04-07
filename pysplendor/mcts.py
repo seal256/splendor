@@ -15,7 +15,7 @@ class Node:
         self.acting_player = acting_player  # active_player at the parent state
         self.children = []
         self.visits = 0
-        self.wins = 0  # wins for the acting_player (who took the action)
+        self.wins = 0 # wins for the acting_player (who took the action)
         self.p = 1.0  # prior action probability
 
 # This implementation is suited for memory intensive game setups: 
@@ -29,6 +29,7 @@ class MCTSParams:
     iterations: int = 1000
     exploration: float = 1.4
     weighted_selection_moves: int = -1
+    value_weight: float = 0.5
 
 class MCTS:
     '''MCTS algorithm'''
@@ -143,6 +144,12 @@ class Policy(ABC):
         '''Returns probabilities of available actions in the order provided by game_state.get_actions()'''
         pass
 
+class Value(ABC):
+    @abstractmethod
+    def predict(self, game_state: GameState) -> List[float]:
+        '''Estimates the value of the game_state for each player'''
+        pass
+
 class PolicyMCTS(MCTS):
     def __init__(self, state: GameState, policy: Policy, params: MCTSParams = None):
         super().__init__(state, params)
@@ -173,6 +180,72 @@ class PolicyMCTS(MCTS):
 
         # Simulation
         rewards = self._rollout(state)
+
+        # Backpropagation
+        while node is not None:
+            node.visits += 1
+            if not node.parent:  # skip root node
+                break
+            if node.acting_player == CHANCE_PLAYER:  # do not record wins, but downscale the rewards
+                if node.parent.children:
+                    rewards = [r / len(node.parent.children) for r in rewards]
+            else:
+                node.wins += rewards[node.acting_player]
+            node = node.parent
+
+    def _select_child(self, state, node):
+        '''Selects child node according to UCB or random for chance nodes'''
+        if state.active_player() == CHANCE_PLAYER:
+            return random.choice(node.children)
+        
+        max_ucb = -1
+        best_child = None
+        parent_visits_sqrts = math.sqrt(node.visits)
+        for child in node.children:
+            exploitation_term = child.wins / child.visits if child.visits > 0 else 0
+            exploration_term = child.p * parent_visits_sqrts / (child.visits + 1)
+            ucb = exploitation_term + self.params.exploration * exploration_term
+            if ucb > max_ucb:
+                max_ucb = ucb
+                best_child = child
+        if best_child is None:
+            raise RuntimeError("Unable to find best child!")
+        return best_child
+    
+class PVMCTS(MCTS):
+    def __init__(self, state: GameState, policy: Policy, value: Value, params: MCTSParams = None):
+        super().__init__(state, params)
+        self.policy = policy # action selection policy
+        self.value = value # state value estimator
+
+    def _search_iteration(self):
+        # Selection
+        node = self.root
+        state = self.root_state.copy()
+        while node.children and node.visits > 0:
+            node = self._select_child(state, node)
+            state.apply_action(node.action)
+
+        # Expansion
+        if not state.is_terminal() and not node.children and node.visits > 0:
+            actions = state.get_actions()
+            acting_player = state.active_player()
+            probs = ([1.0] * len(actions) if acting_player == CHANCE_PLAYER 
+                    else self.policy.predict(state))
+            for action, p in zip(actions, probs):
+                child_node = Node(action=action, parent=node, acting_player=acting_player)
+                child_node.p = p
+                node.children.append(child_node)
+            random.shuffle(node.children)  # Optional step that simplifies selection phase
+            if node.children:
+                node = self._select_child(state, node)
+                state.apply_action(node.action)
+
+        # Simulation
+        predicted_values = self.value.predict(state)
+        rewards = self._rollout(state)
+        vw = self.params.value_weight
+        rewards = [(1 - vw) * r + vw * v for r, v in zip(rewards, predicted_values)]
 
         # Backpropagation
         while node is not None:

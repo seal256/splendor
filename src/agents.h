@@ -131,4 +131,29 @@ public:
     }
 };
 
+template<typename ActionT>
+class PVMCTSAgent : public Agent<ActionT> {
+private:
+    const std::shared_ptr<mcts::Policy<ActionT>> policy;
+    const std::shared_ptr<mcts::Value<ActionT>> value;
+    const mcts::MCTSParams mcts_params;
 
+public:
+    PVMCTSAgent(const std::shared_ptr<mcts::Policy<ActionT>>& policy,
+                const std::shared_ptr<mcts::Value<ActionT>>& value,
+                const mcts::MCTSParams& params = mcts::MCTSParams())
+        : policy(policy), value(value), mcts_params(params) {}
+
+    ActionT get_action(const std::shared_ptr<GameState<ActionT>>& game_state) const override {
+        mcts::PVMCTS<ActionT> mcts(game_state, policy, value, mcts_params);
+        return mcts.search();
+    }
+
+    ActionInfo<ActionT> get_action_info(const std::shared_ptr<GameState<ActionT>>& game_state) const override {
+        ActionInfo<ActionT> action_info;
+        mcts::PVMCTS<ActionT> mcts(game_state, policy, value, mcts_params);
+        action_info.action = mcts.search();
+        action_info.freqs = mcts.root_visits();
+        return action_info;
+    }
+};

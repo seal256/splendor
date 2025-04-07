@@ -259,6 +259,9 @@ class SplendorGameState(GameState):
         cp.players = [player.copy() for player in self.players]
         return cp
 
+    def move_num(self):
+        return self.round
+
     def __str__(self):
         s = f'round: {self.round} player to move: {self.active_player()}\n'
         nobles = ' '.join([str(n) for n in self.nobles])
@@ -490,7 +493,7 @@ class SplendorGameState(GameState):
                     actions.append(Action(action_type, gems))
                     
         # three distinct gems
-        if sum(player.gems) < self.rules.max_player_gems - self.rules.max_gems_take:
+        if sum(player.gems) <= self.rules.max_player_gems - self.rules.max_gems_take:
             available_gems = [g for g in GEMS[:-1] if self.gems[g] > 0]
             for comb_gems in combinations(available_gems, self.rules.max_gems_take):
                 gems = GemSet()
