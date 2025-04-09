@@ -12,16 +12,17 @@ void random_shuffle(RandomIt first, RandomIt last) {
 
 template<typename T>
 size_t weighted_random_choice(const std::vector<T>& weights) {
-    int total = std::accumulate(weights.begin(), weights.end(), T());
-    int threshold = rand() % total;
+    const T total = std::accumulate(weights.begin(), weights.end(), T());
+    const double random_float = static_cast<double>(rand()) / static_cast<double>(RAND_MAX);
+    const T threshold = static_cast<T>(random_float * total);
     
     T cumulative = 0;
     for (size_t n = 0; n < weights.size(); ++n) {
         cumulative += weights[n];
-        if (cumulative >= threshold) {
+        if (cumulative > threshold) {
             return n;
         }
     }
-    
+  
     return weights.size() - 1;
 }

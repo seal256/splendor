@@ -149,7 +149,7 @@ def run_tournament():
 if __name__ == '__main__':
     # run_tournament()
 
-    tloader = traj_loader('data/traj_dump.txt')
+    tloader = traj_loader('data/traj_dump_10k_mc1_it500.txt')
     for _ in range(1):
         traj = next(tloader)
     print_game_record(traj)

@@ -209,6 +209,9 @@ mcts::MCTSParams parse_mcts_params(const json& jsn) {
     if (jsn.contains("use_rollout_policy")) {
         params.use_rollout_policy = jsn["use_rollout_policy"];
     }
+    if (jsn.contains("use_selection_policy")) {
+        params.use_selection_policy = jsn["use_selection_policy"];
+    }
     if (jsn.contains("value_weight")) {
         params.value_weight = jsn["value_weight"];
     }    

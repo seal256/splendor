@@ -1,17 +1,23 @@
 {
     "agents": [
         {
-            "type": "MCTSAgent",
-            "iterations": 1000,
-            "max_choice_children": 1 
+            "type": "PolicyMCTSAgent",
+            "iterations": 500,
+            "max_choice_children": 1,
+            "use_rollout_policy": true,
+            "use_selection_policy": true,
+            "policy" : {
+                "type" : "ConstantPolicy",
+                "probs": [0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233,0.0233]
+            }
         },
         {
             "type": "MCTSAgent",
-            "iterations": 1000,
-            "max_choice_children": 5
+            "iterations": 500,
+            "max_choice_children": 1
         }
     ],
-    "num_games": 1000,
+    "num_games": 20,
     "num_workers": 10,
     "verbose": false,
     "save_freqs": true,

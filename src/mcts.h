@@ -36,6 +36,7 @@ struct MCTSParams {
     int max_choice_children = 100;
     double value_weight = 0.5; // Weight for combining rollout and value estimates
     int max_rollout_len = 500;
+    bool use_selection_policy = true;
     bool use_rollout_policy = false;
 };
 
@@ -157,7 +158,7 @@ public:
         }
     }
 
-private:
+protected:
     virtual std::shared_ptr<Node<ActionT>> select_child(const std::shared_ptr<GameState<ActionT>> state, const std::shared_ptr<Node<ActionT>> node) {
         if (state->active_player() == CHANCE_PLAYER) {
             int random_idx = rand() % node->children.size();
@@ -203,6 +204,10 @@ private:
     }
 
     virtual std::vector<double> rollout(std::shared_ptr<GameState<ActionT>> state) {
+        return this->random_rollout(state);
+    }
+
+    virtual std::vector<double> random_rollout(std::shared_ptr<GameState<ActionT>> state) {
         // Simulates a random playout from the given state
         while (!state->is_terminal()) {
             auto actions = state->get_actions();
@@ -240,7 +245,7 @@ public:
     PolicyMCTS(const std::shared_ptr<GameState<ActionT>>& state, const std::shared_ptr<Policy<ActionT>>& policy, const MCTSParams& params = MCTSParams())
         : MCTS<ActionT>(state, params), policy(policy) {}
 
-private:
+protected:
     std::shared_ptr<Node<ActionT>> select_child(const std::shared_ptr<GameState<ActionT>> state, const std::shared_ptr<Node<ActionT>> node) override {
         if (state->active_player() == CHANCE_PLAYER) {
             int random_idx = rand() % node->children.size();
@@ -269,7 +274,7 @@ private:
     virtual void expand_node(const std::shared_ptr<GameState<ActionT>> state, std::shared_ptr<Node<ActionT>> node) override {
         const std::vector<ActionT> actions = state->get_actions(); 
         int acting_player = state->active_player();
-        const std::vector<double> probs = acting_player == CHANCE_PLAYER ?
+        const std::vector<double> probs = acting_player == CHANCE_PLAYER || !this->params.use_selection_policy ?
             std::vector<double>(actions.size(), 1.0) : policy->predict(state); 
         for (size_t id = 0; id < actions.size(); id++) { // assumes that get_actions orders actions consistently
             auto child_node = std::make_shared<Node<ActionT>>(actions[id], node.get(), acting_player);
@@ -282,6 +287,27 @@ private:
         }
     }
 
+    std::vector<double> rollout(std::shared_ptr<GameState<ActionT>> state) override {
+        return this->params.use_rollout_policy ? this->ploicy_rollout(state) : this->random_rollout(state);
+    }
+
+    std::vector<double> ploicy_rollout(std::shared_ptr<GameState<ActionT>> state) {
+        // Simulates a policy directed playout from the given state
+        while (!state->is_terminal()) {
+            auto actions = state->get_actions();
+            if (actions.empty()) 
+                break;
+            int random_idx;
+            if (state->active_player() == CHANCE_PLAYER) {
+                random_idx = rand() % actions.size();
+            } else {
+                const auto probs = this->policy->predict(state);
+                random_idx = weighted_random_choice(probs);
+            }
+            state->apply_action(actions[random_idx]);
+        }
+        return state->rewards();
+    }
 };
 
 template<typename ActionT>
@@ -305,57 +331,8 @@ public:
            const MCTSParams& params = MCTSParams())
         : MCTS<ActionT>(state, params), policy(policy), value(value) {}
 
-    void search_iteration() override {       
-        // Selection
-        auto node = this->root;
-        auto state = this->root_state->clone();
-        while (!node->children.empty() && node->visits > 0) {
-            node = this->select_child(state, node);
-            state->apply_action(node->action);
-        }
+protected:
 
-        // Expansion
-        if (!state->is_terminal() && node->children.empty() && node->visits > 0) {
-            this->expand_node(state, node);
-            if (!node->children.empty()) {
-                node = this->select_child(state, node);
-                state->apply_action(node->action);
-            }
-        }
-
-        // Simulation
-        std::vector<double> predicted_values = value->predict(state);
-        std::vector<double> rewards = this->params.use_rollout_policy ? this->ploicy_rollout(state) : this->rollout(state);
-        
-        // Combine rollout and value estimates
-        if (state->is_terminal()) { // rollout reached terminal state
-            double wv = this->params.value_weight;
-            for (size_t player = 0; player < rewards.size(); ++player) {
-                rewards[player] = (1.0 - wv) * rewards[player] + wv * predicted_values[player];
-            }
-        }
-
-        // Backpropagation
-        Node<ActionT> * bp_node = node.get();
-        while (bp_node) {
-            bp_node->visits++;
-            if (!bp_node->parent) {
-                break;
-            }
-            if (bp_node->acting_player == CHANCE_PLAYER) {
-                if (!bp_node->parent->children.empty()) {
-                    for (auto& r : rewards) {
-                        r /= bp_node->parent->children.size();
-                    }
-                }
-            } else {
-                bp_node->wins += rewards[bp_node->acting_player];
-            }
-            bp_node = bp_node->parent;
-        }
-    }
-
-private:
     virtual std::shared_ptr<Node<ActionT>> select_child(const std::shared_ptr<GameState<ActionT>> state, const std::shared_ptr<Node<ActionT>> node) override {
         if (state->active_player() == CHANCE_PLAYER) {
             int random_idx = rand() % node->children.size();
@@ -384,7 +361,7 @@ private:
     virtual void expand_node(const std::shared_ptr<GameState<ActionT>> state, std::shared_ptr<Node<ActionT>> node) override {
         const std::vector<ActionT> actions = state->get_actions(); 
         int acting_player = state->active_player();
-        const std::vector<double> probs = acting_player == CHANCE_PLAYER ?
+        const std::vector<double> probs = acting_player == CHANCE_PLAYER || !this->params.use_selection_policy ?
             std::vector<double>(actions.size(), 1.0) : policy->predict(state); 
         for (size_t id = 0; id < actions.size(); id++) { // assumes that get_actions orders actions consistently
             auto child_node = std::make_shared<Node<ActionT>>(actions[id], node.get(), acting_player);
@@ -397,7 +374,22 @@ private:
         }
     }    
 
-    virtual std::vector<double> rollout(std::shared_ptr<GameState<ActionT>> state) override {
+    std::vector<double> rollout(std::shared_ptr<GameState<ActionT>> state) override {
+        std::vector<double> predicted_values = value->predict(state);
+        std::vector<double> rewards = this->params.use_rollout_policy ? this->ploicy_rollout(state) : this->random_rollout(state);
+        
+        // Combine rollout and value estimates
+        if (state->is_terminal()) { // rollout reached terminal state
+            double wv = this->params.value_weight;
+            for (size_t player = 0; player < rewards.size(); ++player) {
+                rewards[player] = (1.0 - wv) * rewards[player] + wv * predicted_values[player];
+            }
+        }
+
+        return rewards;
+    }
+    
+    std::vector<double> random_rollout(std::shared_ptr<GameState<ActionT>> state) override {
         // Simulates a random playout from the given state
         for (int t = 0; t < this->params.max_rollout_len && !state->is_terminal(); t++) {
             auto actions = state->get_actions();
