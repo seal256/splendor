@@ -10,7 +10,7 @@ mkdir bin
 
 cd build
 cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE ..
-cmake --build .
+cmake --build . -j 8
 
 cd ..
 rm ./splendor

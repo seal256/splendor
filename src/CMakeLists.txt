@@ -1,8 +1,13 @@
 set(SOURCE_FILES
+    agents.cpp
+    game_state.cpp
+    game.cpp
     main.cpp
+    mcts.cpp
+    nn_policy.cpp
     splendor.cpp
-    util.cpp
     splendor_agents.cpp
+    util.cpp
 )
 
 add_executable(splendor ${SOURCE_FILES})

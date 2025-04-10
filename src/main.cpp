@@ -9,9 +9,6 @@ using nlohmann::json;
 #include "game.h"
 #include "util.h"
 
-using splendor::Action;
-using splendor::SplendorGameState;
-
 const json DEFAULT_TASK = {
     {"agents", {
         {{"type", "MCTSAgent"}, {"iterations", 1000}, {"exploration", 1.4}},
@@ -43,9 +40,9 @@ int main(int argc, char* argv[]) {
 
     const std::string task_name = task_json.value("task", "run_games");
     if (task_name == "run_games") {
-        GameSeriesTask<Action> task(task_json);
-        std::vector<Trajectory<Action>> trajectories = task.num_workers > 1 ? 
-            run_games_parallel<SplendorGameState, Action>(task) : run_games<SplendorGameState, Action>(task);
+        GameSeriesTask task(task_json);
+        std::vector<Trajectory> trajectories = task.num_workers > 1 ? 
+            run_games_parallel(task) : run_games(task);
         
         splendor_stats(trajectories);
         if (!task.dump_trajectories.empty()) {

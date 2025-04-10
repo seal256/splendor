@@ -1,10 +1,10 @@
 {
     "agents": [
         {
-            "type": "PolicyMCTSAgent",
+            "type": "MCTSAgent",
             "iterations": 500,
             "max_choice_children": 1,
-            "use_rollout_policy": true,
+            "use_rollout_policy": false,
             "use_selection_policy": true,
             "policy" : {
                 "type" : "ConstantPolicy",
@@ -17,7 +17,7 @@
             "max_choice_children": 1
         }
     ],
-    "num_games": 20,
+    "num_games": 100,
     "num_workers": 10,
     "verbose": false,
     "save_freqs": true,

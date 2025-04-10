@@ -6,7 +6,6 @@
 #include "nn_policy.h"
 
 using nlohmann::json;
-using splendor::Action;
 using splendor::SplendorGameState;
 
 std::pair<double, double> avg_dev(const std::vector<double>& values) {
@@ -25,7 +24,7 @@ std::pair<double, double> avg_dev(const std::vector<double>& values) {
     return {mean, std::sqrt(variance)};
 }
 
-void splendor_stats(const std::vector<Trajectory<Action>>& trajectories) {
+void splendor_stats(const std::vector<Trajectory>& trajectories) {
     if (trajectories.empty()) {
         return;
     }
@@ -86,54 +85,6 @@ void splendor_stats(const std::vector<Trajectory<Action>>& trajectories) {
     std::cout << "game length avg: " << len_mean_dev.first << " std dev: " << len_mean_dev.second << "\n";
 }
 
-void to_json(json& j, const Trajectory<Action>& traj) {
-    std::vector<std::string> actions;
-    for (const auto action : traj.actions)
-        actions.push_back(action.to_str());
-    
-    auto initial_state = std::dynamic_pointer_cast<SplendorGameState>(traj.initial_state);
-    j = {
-        {"initial_state", *initial_state},
-        {"rewards", traj.rewards},
-        {"actions", actions}
-    };
-
-    if (!traj.states.empty()) {
-        std::vector<json> states;
-        for (auto state : traj.states) {
-            auto splendor_state = std::dynamic_pointer_cast<SplendorGameState>(state);
-            states.push_back(*splendor_state);
-        }
-        j["states"] = states;
-    }
-
-    if (!traj.freqs.empty()) {
-        std::vector<std::map<std::string, int>> freqs;
-        freqs.resize(traj.freqs.size());
-        for (size_t action_num = 0; action_num < freqs.size(); action_num++) {
-            for (const auto& pr : traj.freqs[action_num]) {
-                freqs[action_num][pr.first.to_str()] = pr.second;
-            }
-        }
-        j["freqs"] = freqs;
-    }
-}
-
-void dump_trajectories(const std::string& file_name, const std::vector<Trajectory<Action>>& trajectories) {
-    std::ofstream out_file(file_name);
-    if (!out_file.is_open()) {
-        throw std::runtime_error("Failed to open file: " + file_name);
-    }
-
-    for (const auto& traj : trajectories) {
-        json jsn = traj;
-        out_file << jsn.dump() << "\n";
-    }
-
-    out_file.close();    
-    std::cout << trajectories.size() << " trajectories are dumped to " << file_name << "\n";
-}
-
 void run_model(const json& task_json) {
     const std::string model_path = task_json["model_path"];
     int num_players = task_json["num_players"];
@@ -141,7 +92,7 @@ void run_model(const json& task_json) {
 
     auto game_state = std::make_shared<SplendorGameState>(num_players);
     int num_moves = std::rand() % 20;
-    auto random_agent = RandomAgent<Action>();
+    auto random_agent = RandomAgent();
     for (int n = 0; n < num_moves; n++) { // makes a few moves to disturb the state
         auto action = random_agent.get_action(game_state);
         game_state->apply_action(action);
@@ -153,7 +104,7 @@ void run_model(const json& task_json) {
     auto state_encoder = std::make_shared<splendor::SplendorGameStateEncoder>(num_players);
     std::vector<int> state_vec = state_encoder->state_to_vec(*game_state);
     
-    auto policy = std::make_shared<mcts::NNPolicy<Action>>(model_path, state_encoder, splendor::ACTION_ID);
+    auto policy = std::make_shared<mcts::NNPolicy>(model_path, state_encoder);
     auto prediction = policy->predict(game_state);
 
     json result = {

@@ -6,43 +6,7 @@
 #include "splendor_agents.h"
 #include "nn_policy.h"
 
-using splendor::Action;
-
-// class CheatMCTSAgent : public Agent<Action> {
-// private:
-//     mcts::MCTSParams mcts_params;
-
-// public:
-//     CheatMCTSAgent(const mcts::MCTSParams& params = mcts::MCTSParams()) : mcts_params(params) {}
-
-//     Action get_action(const std::shared_ptr<GameState<Action>>& game_state) const override {
-//         std::vector<double> probs(splendor::ACTION_ID.size(), 1);
-//         if (game_state->active_player() != CHANCE_PLAYER) {
-//             mcts::MCTS<Action> mcts(game_state, mcts_params);
-//             mcts.search();
-
-//             double count_sum = 0.0;
-//             const auto root_visits = mcts.root_visits();
-//             for (const auto& pr : root_visits) {
-//                 probs[splendor::ACTION_ID.at(pr.first.to_str())] = pr.second;
-//                 count_sum += pr.second;
-//             }
-//             count_sum += (splendor::ACTION_ID.size() - root_visits.size());
-
-//             for (auto& p: probs) {
-//                 p /= count_sum;
-//             }            
-//         }
-//         std::shared_ptr<mcts::Policy<Action>> policy = std::make_shared<ConstantPolicy<Action>>(probs, splendor::ACTION_ID);
-        
-//         mcts::PolicyMCTS<Action> policy_mcts(game_state, policy, mcts_params);
-//         Action action = policy_mcts.search();
-        
-//         return action;
-//     }
-// };
-
-
+using nlohmann::json;
 
 namespace splendor {
 
@@ -60,7 +24,7 @@ void SplendorGameStateEncoder::calculate_vector_lengths() {
     noble_vec_len_ = noble_to_vec(sample_noble).size();
 }
 
-std::vector<float> SplendorGameStateEncoder::encode(const std::shared_ptr<GameState<Action>> game_state) const {
+std::vector<float> SplendorGameStateEncoder::encode(const std::shared_ptr<GameState> game_state) const {
     auto splendor_state = std::dynamic_pointer_cast<SplendorGameState>(game_state);
     if (!splendor_state) {
         throw std::runtime_error("SplendorGameStateEncoder expects a SplendorGameState");
@@ -170,7 +134,7 @@ std::vector<int> SplendorGameStateEncoder::state_to_vec(const SplendorGameState&
 AccumValue::AccumValue(double score_norm) 
     : score_norm_(score_norm) {}
 
-std::vector<double> AccumValue::predict(const std::shared_ptr<GameState<splendor::Action>> game_state) const {
+std::vector<double> AccumValue::predict(const std::shared_ptr<GameState> game_state) const {
     auto splendor_state = std::dynamic_pointer_cast<SplendorGameState>(game_state);
     if (!splendor_state) {
         throw std::runtime_error("AccumValue requires SplendorGameState");
@@ -218,7 +182,7 @@ mcts::MCTSParams parse_mcts_params(const json& jsn) {
     return params;
 }
 
-std::shared_ptr<mcts::Policy<Action>> construct_policy(const json& jsn) {
+std::shared_ptr<mcts::Policy> construct_policy(const json& jsn) {
     if (!jsn.contains("type")) {
         throw std::runtime_error("JSON polciy configuration must contain a 'type' field.");
     }
@@ -226,14 +190,14 @@ std::shared_ptr<mcts::Policy<Action>> construct_policy(const json& jsn) {
 
     if (type == "ConstantPolicy") {
         std::vector<double> probs = jsn["probs"];
-        auto policy = std::make_shared<ConstantPolicy<Action>>(probs, splendor::ACTION_ID);
+        auto policy = std::make_shared<ConstantPolicy>(probs);
         return policy;
 
     } else if (type == "NNPolicy") {
         std::string model_path = jsn["model_path"];
         int num_players = jsn["num_players"];
         auto state_encoder = std::make_shared<splendor::SplendorGameStateEncoder>(num_players);
-        auto policy = std::make_shared<mcts::NNPolicy<Action>>(model_path, state_encoder, splendor::ACTION_ID);
+        auto policy = std::make_shared<mcts::NNPolicy>(model_path, state_encoder);
         return policy;
     
     } else {
@@ -241,18 +205,18 @@ std::shared_ptr<mcts::Policy<Action>> construct_policy(const json& jsn) {
     }
 }
 
-std::shared_ptr<Agent<Action>> construct_agent(const json& jsn) {
+std::shared_ptr<Agent> construct_agent(const json& jsn) {
     if (!jsn.contains("type")) {
         throw std::runtime_error("JSON configuration must contain a 'type' field.");
     }
     std::string agent_type = jsn["type"];
 
     if (agent_type == "RandomAgent") {
-        return std::make_shared<RandomAgent<Action>>();
+        return std::make_shared<RandomAgent>();
 
     } else if (agent_type == "MCTSAgent") {
         mcts::MCTSParams params = parse_mcts_params(jsn);
-        return std::make_shared<MCTSAgent<Action>>(params);
+        return std::make_shared<MCTSAgent>(params);
 
     } else if (agent_type == "PolicyMCTSAgent") {
         mcts::MCTSParams params = parse_mcts_params(jsn);
@@ -260,7 +224,7 @@ std::shared_ptr<Agent<Action>> construct_agent(const json& jsn) {
             throw std::runtime_error("PolicyMCTSAgent must contain a 'policy' section.");
         }
         auto policy = construct_policy(jsn["policy"]);
-        return std::make_shared<PolicyMCTSAgent<Action>>(policy, params);
+        return std::make_shared<PolicyMCTSAgent>(policy, params);
 
     } else if (agent_type == "PVMCTSAgent") {
         mcts::MCTSParams params = parse_mcts_params(jsn);
@@ -269,7 +233,7 @@ std::shared_ptr<Agent<Action>> construct_agent(const json& jsn) {
         }
         auto policy = construct_policy(jsn["policy"]);
         auto value = std::make_shared<splendor::AccumValue>();
-        return std::make_shared<PVMCTSAgent<Action>>(policy, value, params);
+        return std::make_shared<PVMCTSAgent>(policy, value, params);
 
     // } else if (agent_type == "CheatMCTSAgent") {
     //     mcts::MCTSParams params = parse_mcts_params(jsn);

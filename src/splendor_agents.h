@@ -7,11 +7,11 @@
 #include "json.hpp"
 
 
-std::shared_ptr<Agent<splendor::Action>> construct_agent(const nlohmann::json& jsn);
+std::shared_ptr<Agent> construct_agent(const nlohmann::json& jsn);
 
 namespace splendor {
 
-class SplendorGameStateEncoder : public mcts::GameStateEncoder<Action> {
+class SplendorGameStateEncoder : public mcts::GameStateEncoder {
 private:
     int num_players_;
     const SplendorGameRules* rules_;
@@ -24,7 +24,7 @@ private:
     void calculate_vector_lengths();
 public:
     SplendorGameStateEncoder(int num_players);
-    std::vector<float> encode(const std::shared_ptr<GameState<Action>> game_state) const override;
+    std::vector<float> encode(const std::shared_ptr<GameState> game_state) const override;
     std::vector<int> gems_to_vec(const GemSet& gems, int max_gems = -1) const;
     std::vector<int> card_to_vec(const Card& card) const;
     std::vector<int> noble_to_vec(const Noble& noble) const;
@@ -33,14 +33,14 @@ public:
     
 };
 
-class AccumValue : public mcts::Value<splendor::Action> {
+class AccumValue : public mcts::Value {
     private:
         const double score_norm_;
         
     public:
         explicit AccumValue(double score_norm = 15.0);
         
-        std::vector<double> predict(const std::shared_ptr<GameState<splendor::Action>> game_state) const override;
+        std::vector<double> predict(const std::shared_ptr<GameState> game_state) const override;
     };
 };
 

@@ -6,7 +6,6 @@
 #include <string>
 
 #include "json.hpp"
-using nlohmann::json;
 
 #include "game_state.h"
 
@@ -16,7 +15,6 @@ constexpr int NUM_GEMS = 6;
 constexpr int CARD_LEVELS = 3;
 
 extern const std::vector<std::string> ACTIONS_STR;
-extern const std::unordered_map<std::string, size_t> ACTION_ID;
 
 struct GemSet {
     std::array<int, NUM_GEMS> gems;
@@ -114,7 +112,26 @@ struct SplendorGameRules {
 
 extern const std::unordered_map<int, SplendorGameRules> DEFAULT_RULES;
 
-class SplendorGameState : public GameState<Action> {
+enum class ActionError {
+    NONE,
+    INVALID_ACTION_ID,
+    CANNOT_TAKE_MORE_THAN_MAX_GEMS,
+    NOT_ENOUGH_GEMS_IN_STACK,
+    CANNOT_TAKE_MORE_THAN_MAX_IDENTICAL_GEMS,
+    MUST_TAKE_ALL_IDENTICAL_OR_ALL_DIFFERENT,
+    PLAYER_CANNOT_HAVE_MORE_GEMS,
+    CANNOT_TAKE_GOLD_GEM,
+    NOT_ENOUGH_GEMS_ON_TABLE,
+    INVALID_DECK_LEVEL,
+    INVALID_CARD_POSITION,
+    PLAYER_CANNOT_RESERVE_MORE_CARDS,
+    PLAYER_CANNOT_AFFORD_CARD,
+    GAME_REQUIRES_NEW_TABLE_CARD,
+    GAME_DOES_NOT_NEED_NEW_TABLE_CARD,
+    INVALID_ACTION_TYPE
+};
+
+class SplendorGameState : public GameState {
 public:
     const SplendorGameRules* rules;
     int round;
@@ -131,30 +148,33 @@ public:
 public:
     SplendorGameState(int num_players, const SplendorGameRules* rules = nullptr);
 
-    std::vector<Action> get_actions() const override;
+    std::vector<int> get_actions() const override;
     int active_player() const override;
-    void apply_action(const Action& action) override;
+    void apply_action(const int action) override;
     bool is_terminal() const override;
     std::vector<double> rewards() const override;
-    std::shared_ptr<GameState<Action>> clone() const override;
-    void print(std::ostream& os) const override;
+    std::shared_ptr<GameState> clone() const override;
     int move_num() const override;
 
+    void print(std::ostream& os) const override;
+    void to_json(nlohmann::json& j) const override;
+
 private:
-    void _increment_player_to_move();
-    void _set_table_card_needed(int level);
-    bool _player_can_afford_card(const SplendorPlayerState& player, const Card& card) const;
-    void _purchase_card(SplendorPlayerState& player, const Card& card);
-    void _get_noble(SplendorPlayerState& player);
+    std::pair<bool, ActionError> verify_action(const int action_id) const;
+    void increment_player_to_move();
+    void set_table_card_needed(int level);
+    bool player_can_afford_card(const SplendorPlayerState& player, const Card& card) const;
+    void purchase_card(SplendorPlayerState& player, const Card& card);
+    void get_noble(SplendorPlayerState& player);
     std::vector<int> _get_winners() const;
 };
 
 std::ostream& operator<<(std::ostream& os, const SplendorGameState& state);
 
 
-void to_json(json& j, const GemSet& gem_set);
-void to_json(json& j, const SplendorPlayerState& player_state);
-void to_json(json& j, const SplendorGameRules& rules);
-void to_json(json& j, const SplendorGameState& state);
+void to_json(nlohmann::json& j, const GemSet& gem_set);
+void to_json(nlohmann::json& j, const SplendorPlayerState& player_state);
+void to_json(nlohmann::json& j, const SplendorGameRules& rules);
+void to_json(nlohmann::json& j, const SplendorGameState& state);
 
 } // namespace splendor
