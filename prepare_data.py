@@ -3,7 +3,7 @@ import numpy as np
 
 from pysplendor.game_state import CHANCE_PLAYER
 from pysplendor.game import Trajectory, traj_loader
-from pysplendor.splendor import SplendorGameState, SplendorPlayerState, Action, GemSet, Card, Noble, NUM_GEMS, CARD_LEVELS, DEFAULT_RULES
+from pysplendor.splendor import SplendorGameState, SplendorPlayerState, ACTIONS, GemSet, Card, Noble, NUM_GEMS, CARD_LEVELS, DEFAULT_RULES
 
     
 # all possible actions that are avialable to players
@@ -11,7 +11,7 @@ ALL_ACTIONS = ["s","tr2","tg2","tb2","tw2","tk2","tr1g1b1","tr1g1w1","tr1g1k1","
                "r0n0","r0n1","r0n2","r0n3","r1n0","r1n1","r1n2","r1n3","r2n0","r2n1","r2n2","r2n3",
                "p0n0","p0n1","p0n2","p0n3","p1n0","p1n1","p1n2","p1n3","p2n0","p2n1","p2n2","p2n3",
                "h0","h1","h2"]
-ACTION_ID = {a: id for id, a in enumerate(ALL_ACTIONS)}
+# ACTION_ID = {a: id for id, a in enumerate(ALL_ACTIONS)}
 
 
 class SplendorGameStateEncoder:
@@ -97,8 +97,8 @@ def prepare_data(traj_file, data_fname_prefix, num_players = 2):
         # if len(traj.actions) > 105: # filter out long games
         #     continue
         state = traj.initial_state.copy()
-        for action_num in range(len(traj.actions)):
-            action = traj.actions[action_num]
+        for move_num in range(len(traj.actions)):
+            action = traj.actions[move_num]
             if state.active_player() != CHANCE_PLAYER: # ignore chance nodes
                 reward = traj.rewards[state.active_player()]
                 if reward > 0.5: # select only winer moves
@@ -107,10 +107,10 @@ def prepare_data(traj_file, data_fname_prefix, num_players = 2):
                     # actions.append(ACTION_ID[str(action)]) # ints
                     rewards.append(reward) # 0 or 1 
                     if traj.freqs:
-                        freq_vec = [0.0] * len(ACTION_ID)
-                        sum_count = sum([c for c in traj.freqs[action_num].values()])
-                        for action_str, count in traj.freqs[action_num].items():
-                            freq_vec[ACTION_ID[action_str]] = count / sum_count                    
+                        freq_vec = [0.0] * len(ALL_ACTIONS)
+                        sum_count = sum([x[1] for x in traj.freqs[move_num]])
+                        for action_id, count in traj.freqs[move_num].items():
+                            freq_vec[action_id] = count / sum_count                    
                         actions.append(freq_vec) # probability distribution over all actions
                     
                     num_states += 1

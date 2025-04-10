@@ -1,13 +1,13 @@
 import json, random
 
 from .game_state import CHANCE_PLAYER
-from .splendor import SplendorGameState, Action
+from .splendor import SplendorGameState, ACTIONS, ACTIONS_STR
 
 
 class Trajectory():
     def __init__(self, initial_state, actions, rewards, states=[], freqs=[]):
         self.initial_state = initial_state
-        self.actions = actions # serialized to strings
+        self.actions = actions # list of integers
         self.rewards = rewards
         self.states = states # for debug only, usually empty
         self.freqs = freqs
@@ -15,10 +15,10 @@ class Trajectory():
     @classmethod
     def from_json(cls, data):
         initial_state = SplendorGameState.from_json(data['initial_state'])
-        actions = [Action.from_str(a) for a in data['actions']]
+        actions = data['actions']
         rewards = data['rewards']
         states = [SplendorGameState.from_json(s) for s in data['states']] if 'states' in data else []
-        freqs = data['freqs']
+        freqs = data.get('freqs',[])
         return cls(initial_state, actions, rewards, states, freqs)
     
 
@@ -44,7 +44,7 @@ def run_one_game(game_state, agents, verbose=False, save_states=False):
 
         if verbose:
             print(f"\n{game_state}\n")
-            print(f"selected action: {action}\n")
+            print(f"selected action: {ACTIONS_STR[action]}\n")
 
         trajectory.actions.append(action)
         game_state.apply_action(action)

@@ -427,7 +427,7 @@ std::pair<bool, ActionError> SplendorGameState::verify_action(const int action_i
         if (action.level < 0 || action.level >= cards.size()) {
             return {false, ActionError::INVALID_DECK_LEVEL};
         }
-        if (action.pos < 0 || action.pos >= rules->max_open_cards) {
+        if (action.pos < 0 || action.pos >= cards[action.level].size()) {
             return {false, ActionError::INVALID_CARD_POSITION};
         }
         const Card* card = cards[action.level][action.pos];
@@ -440,6 +440,10 @@ std::pair<bool, ActionError> SplendorGameState::verify_action(const int action_i
     if (action.type == ActionType::PURCHASE_HAND) {
         if (action.pos < 0 || action.pos >= player.hand_cards.size()) {
             return {false, ActionError::INVALID_CARD_POSITION};
+        }
+        const Card* card = player.hand_cards[action.pos];
+        if (!player_can_afford_card(player, *card)) {
+            return {false, ActionError::PLAYER_CANNOT_AFFORD_CARD};
         }
         return {true, ActionError::NONE};
     }

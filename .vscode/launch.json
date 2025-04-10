@@ -8,6 +8,7 @@
             "program": "${workspaceFolder}/splendor",
             "args": ["/Users/seal/projects/splendor/task.json"],
             //"args": ["/Users/seal/projects/splendor/tests/state_encoder_test_config.json"],
+            // "args": ["/Users/seal/projects/splendor/tests/pysplendor_test_config.json"],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
             "environment": [],

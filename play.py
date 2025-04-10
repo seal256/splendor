@@ -8,7 +8,7 @@ from pysplendor.agents import RandomAgent, MCTSAgent, Agent
 from pysplendor.splendor import SplendorGameState, Action
 from pysplendor.game import run_one_game, Trajectory, traj_loader
 from pysplendor.mcts import MCTS, PVMCTS, Value, PolicyMCTS, Policy, MCTSParams
-from prepare_data import SplendorGameStateEncoder, ALL_ACTIONS, ACTION_ID
+from prepare_data import SplendorGameStateEncoder, ALL_ACTIONS
 from train import STATE_LEN, NUM_ACTIONS, MLP
 
 class ConstantPolicy(Policy):

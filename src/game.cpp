@@ -74,8 +74,7 @@ std::vector<Trajectory> run_games(const GameSeriesTask& task) {
     auto start = std::chrono::high_resolution_clock::now();
     for (int game_num = 0; game_num < task.num_games; ++game_num) {
         auto game_state = std::make_shared<splendor::SplendorGameState>(task.agents.size());
-        Trajectory trajectory = run_one_game(game_state, task.agents, random_agent, 
-                                           task.verbose, task.save_states, task.save_freqs);
+        Trajectory trajectory = run_one_game(game_state, task.agents, random_agent, task.verbose, task.save_states, task.save_freqs);
         trajectories.push_back(trajectory);
 
         std::cout << "Game " << game_num << " of " << task.num_games 

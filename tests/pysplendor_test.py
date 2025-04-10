@@ -1,11 +1,12 @@
 import subprocess
-import os
+import os, sys
 
+# sys.path.append('/Users/seal/projects/splendor/')
 from pysplendor.game import Trajectory, traj_loader
 from pysplendor.splendor import SplendorGameState, CARD_LEVELS, Action
 
 BINARY_PATH = "./splendor"
-CONFIG_PATH = "tests/test_config.json"
+CONFIG_PATH = "tests/pysplendor_test_config.json"
 TRAJ_DUMP_PATH = "data/traj_dump.txt"
 
 def compare_states(state1: SplendorGameState, state2: SplendorGameState) -> bool:
@@ -90,4 +91,7 @@ def test_cpp_vs_python_splendor_implementation_equivalence():
                 print('Resulting c++ state:')
                 print(cpp_state)
                 raise e
-            
+
+# if __name__ == '__main__':
+#     test_cpp_vs_python_splendor_implementation_equivalence()
+       
