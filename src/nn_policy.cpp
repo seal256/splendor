@@ -17,7 +17,7 @@ NNPolicy::NNPolicy(const std::string& model_path,
     }
 }
 
-std::vector<double> NNPolicy::predict(const std::shared_ptr<GameState> game_state) const {       
+std::vector<double> NNPolicy::predict(const std::shared_ptr<GameState> game_state, const std::vector<int>& actions) const {       
     std::vector<float> state_vec = state_encoder->encode(game_state);
     
     torch::Tensor input_tensor = torch::from_blob(
@@ -39,11 +39,10 @@ std::vector<double> NNPolicy::predict(const std::shared_ptr<GameState> game_stat
     output_tensor = output_tensor.to(torch::kCPU).contiguous();
     float* output_data = output_tensor.data_ptr<float>();
             
-    auto legal_actions = game_state->get_actions();
     std::vector<double> action_probs;
-    action_probs.reserve(legal_actions.size());
+    action_probs.reserve(actions.size());
     
-    for (const auto& action : legal_actions) {
+    for (const auto& action : actions) {
         action_probs.push_back(static_cast<double>(output_data[action]));
     }
 

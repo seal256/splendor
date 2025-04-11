@@ -46,7 +46,7 @@ class ConstantPolicy : public mcts::Policy {
     
 public:
     ConstantPolicy(const std::vector<double>& probs);
-    std::vector<double> predict(const std::shared_ptr<GameState> game_state) const override;
+    std::vector<double> predict(const std::shared_ptr<GameState> game_state, const std::vector<int>& actions) const override;
 };
 
 class PolicyMCTSAgent : public Agent {

@@ -56,8 +56,8 @@ protected:
 
 class Policy {
 public:
-    // Returns probabilities of available actions in the order provided by game_state->get_actions()
-    virtual std::vector<double> predict(const std::shared_ptr<GameState> game_state) const = 0;
+    // Returns probabilities of available actions
+    virtual std::vector<double> predict(const std::shared_ptr<GameState> game_state, const std::vector<int>& actions) const = 0;
     virtual ~Policy() = default;
 };
 

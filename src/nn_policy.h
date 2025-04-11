@@ -21,7 +21,7 @@ public:
              const std::shared_ptr<mcts::GameStateEncoder>& state_encoder,
              torch::Device device = torch::kCPU);
     
-    std::vector<double> predict(const std::shared_ptr<GameState> game_state) const override;
+    std::vector<double> predict(const std::shared_ptr<GameState> game_state, const std::vector<int>& actions) const override;
     
     ~NNPolicy() override = default;
 };

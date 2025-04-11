@@ -194,7 +194,7 @@ void PolicyMCTS::expand_node(const std::shared_ptr<GameState> state, std::shared
     const std::vector<int> actions = state->get_actions(); 
     int acting_player = state->active_player();
     const std::vector<double> probs = acting_player == CHANCE_PLAYER || !this->params.use_selection_policy ?
-        std::vector<double>(actions.size(), 1.0) : policy->predict(state); 
+        std::vector<double>(actions.size(), 1.0) : policy->predict(state, actions); 
     for (size_t id = 0; id < actions.size(); id++) {
         auto child_node = std::make_shared<Node>(actions[id], node.get(), acting_player);
         child_node->p = probs[id];
@@ -219,7 +219,7 @@ std::vector<double> PolicyMCTS::ploicy_rollout(std::shared_ptr<GameState> state)
         if (state->active_player() == CHANCE_PLAYER) {
             random_idx = rand() % actions.size();
         } else {
-            const auto probs = this->policy->predict(state);
+            const auto probs = this->policy->predict(state, actions);
             random_idx = weighted_random_choice(probs);
         }
         state->apply_action(actions[random_idx]);
@@ -261,7 +261,7 @@ void PVMCTS::expand_node(const std::shared_ptr<GameState> state, std::shared_ptr
     const std::vector<int> actions = state->get_actions(); 
     int acting_player = state->active_player();
     const std::vector<double> probs = acting_player == CHANCE_PLAYER || !this->params.use_selection_policy ?
-        std::vector<double>(actions.size(), 1.0) : policy->predict(state); 
+        std::vector<double>(actions.size(), 1.0) : policy->predict(state, actions); 
     for (size_t id = 0; id < actions.size(); id++) {
         auto child_node = std::make_shared<Node>(actions[id], node.get(), acting_player);
         child_node->p = probs[id];
@@ -311,7 +311,7 @@ std::vector<double> PVMCTS::ploicy_rollout(std::shared_ptr<GameState> state) {
         if (state->active_player() == CHANCE_PLAYER) {
             random_idx = rand() % actions.size();
         } else {
-            const auto probs = this->policy->predict(state);
+            const auto probs = this->policy->predict(state, actions);
             random_idx = weighted_random_choice(probs);
         }
         state->apply_action(actions[random_idx]);

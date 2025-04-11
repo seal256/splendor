@@ -1,11 +1,11 @@
 #include <algorithm>
 #include <random>
 
-// This solution is far from perfect
-// TODO: properly migrate random generators to C++17 standards
+// TODO: get rid of std::rand()
+
 template<typename RandomIt>
 void random_shuffle(RandomIt first, RandomIt last) {
-    thread_local std::random_device rd;
+    // thread_local std::random_device rd;
     thread_local std::mt19937 g(std::rand());
     std::shuffle(first, last, g);
 }
@@ -13,9 +13,13 @@ void random_shuffle(RandomIt first, RandomIt last) {
 template<typename T>
 size_t weighted_random_choice(const std::vector<T>& weights) {
     const T total = std::accumulate(weights.begin(), weights.end(), T());
-    const double random_float = static_cast<double>(rand()) / static_cast<double>(RAND_MAX);
-    const T threshold = static_cast<T>(random_float * total);
-    
+    if (total <= T()) {
+        throw std::invalid_argument("Negative or zero weights in weighted_random_choice");
+    }
+    thread_local std::mt19937 gen(std::rand());
+    std::uniform_real_distribution<double> dis(0.0, 1.0);
+    const T threshold = static_cast<T>(dis(gen) * total);
+ 
     T cumulative = 0;
     for (size_t n = 0; n < weights.size(); ++n) {
         cumulative += weights[n];

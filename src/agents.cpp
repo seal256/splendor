@@ -42,8 +42,7 @@ ActionInfo MCTSAgent::get_action_info(const std::shared_ptr<GameState>& game_sta
 ConstantPolicy::ConstantPolicy(const std::vector<double>& probs)
     : probs(probs) {}
 
-std::vector<double> ConstantPolicy::predict(const std::shared_ptr<GameState> game_state) const {
-    const std::vector<int> actions = game_state->get_actions();
+std::vector<double> ConstantPolicy::predict(const std::shared_ptr<GameState> game_state, const std::vector<int>& actions) const {
     std::vector<double> action_probs;
     action_probs.reserve(actions.size());
     double sum_probs = 0.0;

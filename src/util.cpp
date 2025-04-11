@@ -105,7 +105,8 @@ void run_model(const json& task_json) {
     std::vector<int> state_vec = state_encoder->state_to_vec(*game_state);
     
     auto policy = std::make_shared<mcts::NNPolicy>(model_path, state_encoder);
-    auto prediction = policy->predict(game_state);
+    auto actions = game_state->get_actions();
+    auto prediction = policy->predict(game_state, actions);
 
     json result = {
         {"game_state", *game_state},
