@@ -43,9 +43,11 @@ public:
 
 class ConstantPolicy : public mcts::Policy {
     const std::vector<double> probs;
+    const int num_actions;
+    const int max_round;
     
 public:
-    ConstantPolicy(const std::vector<double>& probs);
+    ConstantPolicy(const std::vector<double>& probs, int num_actions);
     std::vector<double> predict(const std::shared_ptr<GameState> game_state, const std::vector<int>& actions) const override;
 };
 

@@ -42,8 +42,18 @@ std::vector<double> NNPolicy::predict(const std::shared_ptr<GameState> game_stat
     std::vector<double> action_probs;
     action_probs.reserve(actions.size());
     
+    double sum_probs = 0.0;
     for (const auto& action : actions) {
-        action_probs.push_back(static_cast<double>(output_data[action]));
+        double p = static_cast<double>(output_data[action]);
+        sum_probs += p;
+        action_probs.push_back(p);
+    }
+
+    if (sum_probs <= 0.0) {
+        sum_probs = 1.0;
+    }
+    for (auto p : action_probs) {
+        p /= sum_probs;
     }
 
     return action_probs;

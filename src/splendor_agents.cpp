@@ -190,7 +190,8 @@ std::shared_ptr<mcts::Policy> construct_policy(const json& jsn) {
 
     if (type == "ConstantPolicy") {
         std::vector<double> probs = jsn["probs"];
-        auto policy = std::make_shared<ConstantPolicy>(probs);
+        int num_actions = jsn["num_actions"];
+        auto policy = std::make_shared<ConstantPolicy>(probs, num_actions);
         return policy;
 
     } else if (type == "NNPolicy") {
