@@ -175,9 +175,20 @@ def print_weigths(model):
     print()
 
 
-def train_loop(model, train_loader, val_loader, optimizer, criterion, device, num_epochs, verbose=True):
+def save_model(model, path):
+    model_path = path + '.pth'
+    torch.save(model.state_dict(), model_path)
+    print(f'Model is saved to {model_path}')
+
+    sm_model_path = path + '.pt'
+    sm = torch.jit.script(model)
+    sm.save(sm_model_path)
+    print(f'Jit script model is saved to {sm_model_path}')
+
+def train_loop(model, train_loader, val_loader, optimizer, criterion, device, num_epochs, model_path, verbose=True):
     model = model.to(device)
     
+    best_val_loss = 1e8
     for epoch in range(num_epochs):
         train_loss, train_classif_pred, train_classif_correct = train_epoch(model, train_loader, optimizer, criterion, device)
         val_loss, val_classif_pred, val_classif_correct = validate(model, val_loader, criterion, device)
@@ -192,7 +203,11 @@ def train_loop(model, train_loader, val_loader, optimizer, criterion, device, nu
         
         if verbose:
             print_weigths(model)
-            print(classification_report(val_classif_correct, val_classif_pred, target_names = ALL_ACTIONS, zero_division=0))
+            print(classification_report(val_classif_correct, val_classif_pred, labels = list(range(len(ALL_ACTIONS))), target_names = ALL_ACTIONS, zero_division=0))
+
+        if val_loss < best_val_loss:
+            best_val_loss = val_loss
+            save_model(model, model_path + '_best')
 
     print("done!")
 
@@ -206,14 +221,15 @@ def train():
     device = "mps" if torch.backends.mps.is_available() else "cpu"
     print(f'device: {device}')
 
-    model_path = './data/models/mlp.pth'
+    global_iter = 2
+    model_path = f'./data/models/mlp_iter{global_iter}'
     model = MLP(hidden_size=512)
     # model_path = './data/models/resnet_10k.pth'
     # model = ResNet(hidden_size=512, num_blocks=3)
     # model.load_state_dict(torch.load(model_path))
 
-    train_dataset = SplendorDataset(data_fname_prefix='./data/train/iter0')
-    val_dataset = SplendorDataset(data_fname_prefix='./data/val/iter0')
+    train_dataset = SplendorDataset(data_fname_prefix=f'./data/train/iter{global_iter}')
+    val_dataset = SplendorDataset(data_fname_prefix=f'./data/val/iter{global_iter}')
     print(f'train set len: {len(train_dataset)} val set len: {len(val_dataset)}')
     
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
@@ -226,15 +242,9 @@ def train():
     val_data_entropy = data_loss(val_loader, criterion)
     print(f'train data entropy: {train_data_entropy:.4f}, val data entropy: {val_data_entropy:.4f}')
 
-    train_loop(model, train_loader, val_loader, optimizer, criterion, device, num_epochs=30, verbose=True)
+    train_loop(model, train_loader, val_loader, optimizer, criterion, device, num_epochs=30, model_path=model_path, verbose=True)
+    save_model(model, model_path + '_last')
 
-    torch.save(model.state_dict(), model_path)
-    print(f'Final model is saved to {model_path}')
-
-    sm_model_path = model_path[:-1] # without h at the end of the name
-    sm = torch.jit.script(model)
-    sm.save(sm_model_path)
-    print(f'Jit script model is saved to {sm_model_path}')
 
 # def export_model_with_torchscript():
 #     model_path = './data/models/mlp_10k_bw.pth'

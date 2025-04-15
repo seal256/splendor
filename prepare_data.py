@@ -101,7 +101,7 @@ def prepare_data(traj_file, data_fname_prefix, num_players = 2):
             action = traj.actions[move_num]
             if state.active_player() != CHANCE_PLAYER: # ignore chance nodes
                 reward = traj.rewards[state.active_player()]
-                if reward > 0.5: # select only winer moves
+                if True: #reward > 0.5: # select only winner moves
                     state_vec = state_encoder.state_to_vec(state)
                     states.append(np.packbits(state_vec)) # compressed bytes
                     # actions.append(ACTION_ID[str(action)]) # ints
@@ -109,7 +109,7 @@ def prepare_data(traj_file, data_fname_prefix, num_players = 2):
                     if traj.freqs:
                         freq_vec = [0.0] * len(ALL_ACTIONS)
                         sum_count = sum([x[1] for x in traj.freqs[move_num]])
-                        for action_id, count in traj.freqs[move_num].items():
+                        for action_id, count in traj.freqs[move_num]:
                             freq_vec[action_id] = count / sum_count                    
                         actions.append(freq_vec) # probability distribution over all actions
                     
@@ -129,5 +129,5 @@ def prepare_data(traj_file, data_fname_prefix, num_players = 2):
 
 if __name__ == '__main__':
     # print(len(ALL_ACTIONS))
-    prepare_data('./data/traj_dump_1k.txt', './data/val/iter0')
-    # prepare_data('./data/traj_dump_10k.txt', './data/train/iter0')
+    prepare_data('./data/traj_dump_2k_mcc1_it500_ws20_m1.txt', './data/val/iter2f')
+    prepare_data('./data/traj_dump_20k_mcc1_it500_ws20_m1.txt', './data/train/iter2f')
