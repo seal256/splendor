@@ -12,25 +12,23 @@ from prepare_data import SplendorGameStateEncoder, ALL_ACTIONS
 from train import STATE_LEN, NUM_ACTIONS, MLP
 
 class ConstantPolicy(Policy):
-    def __init__(self, probs, action_ids):
+    def __init__(self, probs):
         self.probs = probs
-        self.action_ids = action_ids
 
     def predict(self, game_state: GameState):
-        action_probs = [self.probs[self.action_ids.get(str(a))] for a in game_state.get_actions()]
+        action_probs = [self.probs[a] for a in game_state.get_actions()]
         return action_probs
 
 class NNPolicy(Policy):
-    def __init__(self, model, state_encoder, action_ids):
+    def __init__(self, model, state_encoder):
         self.model = model
         self.state_encoder = state_encoder
-        self.action_ids = action_ids
 
     def predict(self, game_state: GameState):
         state_vec = self.state_encoder.state_to_vec(game_state)
         X = torch.tensor(state_vec, dtype=torch.float32)
         probs = self.model.forward(X).detach().numpy()
-        action_probs = [probs[self.action_ids.get(str(a))] for a in game_state.get_actions()]
+        action_probs = [probs[a] for a in game_state.get_actions()]
         return action_probs
 
 class AccumValue(Value):
@@ -95,10 +93,10 @@ def print_game_record(traj: Trajectory):
 
     # probs = [1/len(ACTION_ID)] * len(ACTION_ID)
     # mcts_params = MCTSParams()
-    # const_policy = ConstantPolicy(probs, ACTION_ID)
+    # const_policy = ConstantPolicy(probs)
     # model = load_mlp_model('./data/models/mlp.pth')
     # state_encoder = SplendorGameStateEncoder(2)
-    # nn_policy = NNPolicy(model, state_encoder, ACTION_ID)
+    # nn_policy = NNPolicy(model, state_encoder)
     # value_fun = AccumValue()
 
     game_state = traj.initial_state.copy()
@@ -133,7 +131,7 @@ def run_tournament():
 
     model = load_mlp_model('./data/models/mlp_10k_bw.pth')
     state_encoder = SplendorGameStateEncoder(2)
-    policy = NNPolicy(model, state_encoder, ACTION_ID)
+    policy = NNPolicy(model, state_encoder)
 
     mcts_params = MCTSParams(iterations= 1000)
     nn_agent = PolicyMCTSAgent(policy, mcts_params)

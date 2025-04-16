@@ -1,7 +1,7 @@
 {
-    "task":"run_model",
-    "model_path":"/Users/seal/projects/splendor/data/models/mlp_10k_bw.pt",
-    "num_players":2,
+    "task": "run_model",
+    "model_path": "/Users/seal/projects/splendor/data/models/mlp_iter2_best.pt",
+    "num_players": 2,
     "result_file": "data/model_run_result.json",
     "random_seed": 199
 }

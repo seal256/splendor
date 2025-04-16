@@ -6,7 +6,7 @@ import torch
 
 from pysplendor.game import Trajectory, traj_loader
 from pysplendor.splendor import SplendorGameState, CARD_LEVELS, Action
-from play import load_mlp_model, SplendorGameStateEncoder, NNPolicy, ACTION_ID
+from play import load_mlp_model, SplendorGameStateEncoder, NNPolicy
 
 BINARY_PATH = "./splendor"
 CONFIG_PATH = "tests/state_encoder_test_config.json"
@@ -42,7 +42,7 @@ def test_cpp_vs_python_state_encoder_implementation_equivalence():
     model = torch.jit.load(model_path)
     model.eval()
     state_encoder = SplendorGameStateEncoder(num_players)
-    policy = NNPolicy(model, state_encoder, ACTION_ID)
+    policy = NNPolicy(model, state_encoder)
 
     state_vec_python = state_encoder.state_to_vec(game_state)
     prediction_python = policy.predict(game_state)
