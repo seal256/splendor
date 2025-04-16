@@ -77,7 +77,7 @@ struct Action {
     ActionType type;
     GemSet gems; // gems to take
     int level = -1;   // card level (for reserve, purchase, new_table_card)
-    int pos = -1;     // postion of the card to take
+    int pos = -1;     // position of the card to take
 
     Action(ActionType type, GemSet gems, int level, int pos) : type(type), gems(gems), level(level), pos(pos) {};
     Action(ActionType type, GemSet gems) : type(type), gems(gems) {};

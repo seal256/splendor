@@ -222,6 +222,18 @@ ACTIONS_STR = ["s", # skip move
 
 ACTIONS = [Action.from_str(a) for a in ACTIONS_STR]
 
+def init_action_type_ids(actions: list[Action]) -> dict[str, list[int]]:
+    """Initialize a dictionary mapping action types to their corresponding action IDs."""
+    ids = {}
+    for n, action in enumerate(actions):
+        action_type = action.type
+        if action_type not in ids:
+            ids[action_type] = []
+        ids[action_type].append(n)
+    return ids
+
+ACTION_TYPE_IDS = init_action_type_ids(ACTIONS)  # indices for all action types
+
 class SplendorGameRules:
     '''A set of constants that affect the game mechanics. Depend on the number of players'''
 
@@ -524,12 +536,72 @@ class SplendorGameState(GameState):
             noble = self.nobles.pop(noble_list[0])
             player.points += noble.points
 
+    # def get_actions(self) -> list[int]:
+    #     actions = []
+    #     for action in range(len(ACTIONS)):
+    #         valid, err = self._verify_action(action)
+    #         if valid:
+    #             actions.append(action)
+    #     return actions
+
     def get_actions(self) -> list[int]:
+        """Returns a list of valid action IDs for the current game state."""
         actions = []
-        for action in range(len(ACTIONS)):
-            valid, err = self._verify_action(action)
-            if valid:
-                actions.append(action)
+
+        if self.table_card_needed:
+            # Move of the gods of randomness, no player is involved
+            action_ids = ACTION_TYPE_IDS[ActionType.new_table_card]
+            deck_size = len(self.decks[self.deck_level])
+            actions.extend(action_ids[:deck_size])
+            return actions
+
+        player = self.players[self.player_to_move]
+
+        # 1. Take new gems
+        # Two same gems
+        player_gems_sum = sum(player.gems)
+        if player_gems_sum < self.rules.max_player_gems - self.rules.max_same_gems_take:
+            action_ids = ACTION_TYPE_IDS[ActionType.take]
+            for gem in range(NUM_GEMS - 1):  # Exclude gold gem
+                if self.gems[gem] >= self.rules.min_same_gems_stack:
+                    actions.append(action_ids[gem])  # take same gems come first in the action list
+
+        # Three distinct gems
+        if player_gems_sum <= self.rules.max_player_gems - self.rules.max_gems_take:
+            action_ids = ACTION_TYPE_IDS[ActionType.take]
+            for n in range(NUM_GEMS - 1, len(action_ids)):  # distinct gem combinations start after single gem takes
+                action = ACTIONS[action_ids[n]]
+                can_take = True
+                for gem in range(NUM_GEMS - 1):
+                    if action.gems[gem] > self.gems[gem]:
+                        can_take = False
+                        break
+                if can_take:
+                    actions.append(action_ids[n])
+
+        # 2. Reserve a card
+        if len(player.hand_cards) < self.rules.max_hand_cards:
+            for action_id in ACTION_TYPE_IDS[ActionType.reserve]:
+                action = ACTIONS[action_id]
+                if action.pos < len(self.cards[action.level]):
+                    actions.append(action_id)
+
+        # 3. Purchase a card from the table
+        for level in range(len(self.cards)):
+            for pos in range(len(self.cards[level])):
+                if self._player_can_afford_card(player, self.cards[level][pos]):
+                    actions.append(ACTION_TYPE_IDS[ActionType.purchase][level * self.rules.max_open_cards + pos])
+
+        # 4. Purchase a card from the hand
+        if player.hand_cards:
+            for pos in range(len(player.hand_cards)):
+                if self._player_can_afford_card(player, player.hand_cards[pos]):
+                    actions.append(ACTION_TYPE_IDS[ActionType.purchase_hand][pos])
+
+        # 0. Skip the move
+        if not actions:
+            actions.append(ACTION_TYPE_IDS[ActionType.skip][0])
+
         return actions
 
     def active_player(self):

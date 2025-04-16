@@ -250,6 +250,17 @@ std::vector<Action> init_actions() {
 }
 const std::vector<Action> ACTIONS = init_actions();
 
+std::unordered_map<ActionType, std::vector<int>> init_action_type_ids(const std::vector<Action>& actions) {
+    std::unordered_map<ActionType, std::vector<int>> ids;
+    for (int n = 0; n < actions.size(); ++n) {
+        const auto& action = actions[n];
+        ids[action.type].push_back(n);
+    }
+    return ids;
+}
+
+std::unordered_map<ActionType, std::vector<int>> ACTION_TYPE_IDS = init_action_type_ids(ACTIONS); // indices for all action types
+
 const std::unordered_map<int, SplendorGameRules> DEFAULT_RULES = {{2, SplendorGameRules(2)}, {3, SplendorGameRules(3)}, {4, SplendorGameRules(4)}};
 
 SplendorGameState::SplendorGameState(int num_players, const SplendorGameRules* rules)
@@ -299,16 +310,98 @@ SplendorGameState::SplendorGameState(int num_players, const SplendorGameRules* r
     }
 }
 
+// std::vector<int> SplendorGameState::get_actions() const {
+//     std::vector<int> actions;
+//     actions.reserve(ACTIONS.size() / 2);
+//     for (int action = 0; action < ACTIONS.size(); action++) {
+//         auto [valid, err] = verify_action(action);
+//         if (valid) {
+//             actions.push_back(action);
+//         }
+//     }
+//     return actions;
+// }
+
+// Faster but more dangerous version, that assumes specific order of the ACTIONS list. Will likely break if the game rules are changed
 std::vector<int> SplendorGameState::get_actions() const {
     std::vector<int> actions;
-    for (int action = 0; action < ACTIONS.size(); action++) {
-        auto [valid, err] = verify_action(action);
-        if (valid) {
-            actions.push_back(action);
+    actions.reserve(ACTIONS.size() / 2);
+
+    if (table_card_needed) {
+        // Move of the gods of randomness, no player is involved
+        const auto& action_ids = ACTION_TYPE_IDS[ActionType::NEW_TABLE_CARD];
+        actions.insert(actions.end(), action_ids.begin(), action_ids.begin() + decks[deck_level].size());
+        return actions;
+    }
+
+    const SplendorPlayerState& player = players[player_to_move];
+
+    // 1. Take new gems
+    // Two same gems
+    int player_gems_sum = player.gems.sum();
+    if (player_gems_sum < rules->max_player_gems - rules->max_same_gems_take) {
+        const auto& action_ids = ACTION_TYPE_IDS[ActionType::TAKE];
+        for (int gem = 0; gem < NUM_GEMS - 1; ++gem) { // Exclude gold gem
+            if (gems.gems[gem] >= rules->min_same_gems_stack) {
+                actions.push_back(action_ids[gem]); // be careful to arrange take actions so that take same go first
+            }
         }
     }
+
+    // Three distinct gems
+    if (player_gems_sum <= rules->max_player_gems - rules->max_gems_take) {
+        const auto& action_ids = ACTION_TYPE_IDS[ActionType::TAKE];
+        for (int n = NUM_GEMS - 1; n < action_ids.size(); ++n) {
+            const auto& action = ACTIONS[action_ids[n]];
+            bool can_take = true;
+            for (int gem = 0; gem < NUM_GEMS - 1; ++gem) {
+                if (action.gems.gems[gem] > gems.gems[gem]) {
+                    can_take = false;
+                    break;
+                }
+            }
+            if (can_take) {
+                actions.push_back(action_ids[n]);
+            }
+        }
+    }
+
+    // 2. Reserve a card
+    if (player.hand_cards.size() < rules->max_hand_cards) {
+        for (const auto& action_id : ACTION_TYPE_IDS[ActionType::RESERVE]) {
+            const auto& action = ACTIONS[action_id];
+            if (action.pos < cards[action.level].size()) {
+                actions.push_back(action_id);
+            }
+        }
+    }
+
+    // 3. Purchase a card from the table
+    for (int level = 0; level < cards.size(); ++level) {
+        for (int pos = 0; pos < cards[level].size(); ++pos) {
+            if (player_can_afford_card(player, *cards[level][pos])) {
+                actions.push_back(ACTION_TYPE_IDS[ActionType::PURCHASE][level * rules->max_open_cards + pos]);
+            }
+        }
+    }
+
+    // 4. Purchase a card from the hand
+    if (!player.hand_cards.empty()) {
+        for (int pos = 0; pos < player.hand_cards.size(); ++pos) {
+            if (player_can_afford_card(player, *player.hand_cards[pos])) {
+                actions.push_back(ACTION_TYPE_IDS[ActionType::PURCHASE_HAND][pos]);
+            }
+        }
+    }
+
+    // 0. Skip the move
+    if (actions.empty()) {
+        actions.push_back(ACTION_TYPE_IDS[ActionType::SKIP][0]);
+    }
+
     return actions;
 }
+
 
 int SplendorGameState::active_player() const {
     if (table_card_needed) {
@@ -452,10 +545,11 @@ std::pair<bool, ActionError> SplendorGameState::verify_action(const int action_i
 }
 
 void SplendorGameState::apply_action(const int action_id) {
-    auto [is_valid, error] = verify_action(action_id);
-    if (!is_valid) {
-        throw std::invalid_argument(action_error_to_string(error));
-    }
+    // Uncomment for more safety if needed
+    // auto [is_valid, error] = verify_action(action_id);
+    // if (!is_valid) {
+    //     throw std::invalid_argument(action_error_to_string(error));
+    // }
 
     const Action& action = ACTIONS[action_id];
     SplendorPlayerState& player = players[player_to_move];
@@ -636,7 +730,7 @@ void SplendorGameState::set_table_card_needed(int level) {
 bool SplendorGameState::player_can_afford_card(const SplendorPlayerState& player, const Card& card) const {
     int gold_to_pay = 0;
     for (int gem = 0; gem < NUM_GEMS; ++gem) {
-        int gem_to_pay = std::max(card.price.gems[gem] - player.card_gems.gems[gem], 0);
+        int gem_to_pay = card.price.gems[gem] - player.card_gems.gems[gem];
         if (gem_to_pay > 0) {
             int gem_available = player.gems.gems[gem];
             if (gem_to_pay > gem_available) {
@@ -650,7 +744,7 @@ bool SplendorGameState::player_can_afford_card(const SplendorPlayerState& player
 void SplendorGameState::purchase_card(SplendorPlayerState& player, const Card& card) {
     int gold_to_pay = 0;
     for (int gem = 0; gem < NUM_GEMS; ++gem) {
-        int gem_to_pay = std::max(card.price.gems[gem] - player.card_gems.gems[gem], 0);
+        int gem_to_pay = card.price.gems[gem] - player.card_gems.gems[gem];
         if (gem_to_pay > 0) {
             int gem_available = player.gems.gems[gem];
             if (gem_to_pay > gem_available) {
