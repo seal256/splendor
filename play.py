@@ -5,10 +5,10 @@ from concurrent.futures import ProcessPoolExecutor
 
 from pysplendor.game_state import GameState, CHANCE_PLAYER
 from pysplendor.agents import RandomAgent, MCTSAgent, Agent
-from pysplendor.splendor import SplendorGameState, Action
+from pysplendor.splendor import SplendorGameState, ACTIONS_STR
 from pysplendor.game import run_one_game, Trajectory, traj_loader
 from pysplendor.mcts import MCTS, PVMCTS, Value, PolicyMCTS, Policy, MCTSParams
-from prepare_data import SplendorGameStateEncoder, ALL_ACTIONS
+from prepare_data import SplendorGameStateEncoder
 from train import STATE_LEN, NUM_ACTIONS, MLP
 
 class ConstantPolicy(Policy):
@@ -55,9 +55,7 @@ class PolicyMCTSAgent(Agent):
         return action
 
 def load_mlp_model(model_path):
-    model = MLP(STATE_LEN, 512, NUM_ACTIONS)
-    state_dict = torch.load(model_path)
-    model.load_state_dict(state_dict)
+    model = torch.jit.load(model_path, map_location=torch.device('cpu'))
     model.eval()
 
     return model
@@ -94,19 +92,19 @@ def print_game_record(traj: Trajectory):
     # probs = [1/len(ACTION_ID)] * len(ACTION_ID)
     # mcts_params = MCTSParams()
     # const_policy = ConstantPolicy(probs)
-    # model = load_mlp_model('./data/models/mlp.pth')
-    # state_encoder = SplendorGameStateEncoder(2)
-    # nn_policy = NNPolicy(model, state_encoder)
+    model = load_mlp_model('./data/models/mlp_iter1_best.pt')
+    state_encoder = SplendorGameStateEncoder(2)
+    nn_policy = NNPolicy(model, state_encoder)
     # value_fun = AccumValue()
 
     game_state = traj.initial_state.copy()
     for n, action in enumerate(traj.actions):
         print(game_state)
-        print(f'active_player: {game_state.active_player()} action: {action}')
+        print(f'active_player: {game_state.active_player()} action: {ACTIONS_STR[action]}')
         if traj.freqs:
             if game_state.active_player() != CHANCE_PLAYER:
-                recorded_visits = traj.freqs[n]
-                print(f'recorded: {recorded_visits}')
+                recorded_visits = {a: c for a, c in traj.freqs[n]}
+                # print(f'recorded: {recorded_visits}')
 
                 # mcts = PolicyMCTS(game_state, const_policy, mcts_params)
                 # mcts.search()
@@ -116,9 +114,10 @@ def print_game_record(traj: Trajectory):
                 # pv_mcts.search()
                 # pv_mcts_vistis = {str(action): count for action, count in  pv_mcts.root_visits()}
 
-                # probs = nn_policy.predict(game_state)
+                probs = nn_policy.predict(game_state)
+                visits_str = ''.join([f'{ACTIONS_STR[a]}: {c}, {probs[n]:.4f}\t' for n, (a, c) in enumerate(traj.freqs[n])])
                 # visits_str = ''.join(sorted([f'{a}: {recorded_visits[a]}, {mcts_vistis[a]}, {pv_mcts_vistis[a]}, {probs[n]:.4f}\t' for n, a in enumerate(mcts_vistis.keys())]))
-                # print(f'recorded vs mcts: {visits_str}')
+                print(f'recorded and probs: {visits_str}')
         print()
         game_state.apply_action(action)
     
@@ -147,7 +146,7 @@ def run_tournament():
 if __name__ == '__main__':
     # run_tournament()
 
-    tloader = traj_loader('data/traj_dump_10k_mc1_it500.txt')
+    tloader = traj_loader('data/traj_dump_1k_mcc1_it500_ws20_m1.txt')
     for _ in range(1):
         traj = next(tloader)
     print_game_record(traj)

@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader, Dataset, random_split
 import numpy as np
 from sklearn.metrics import accuracy_score, classification_report
 
-from prepare_data import ALL_ACTIONS
+from prepare_data import PLAYER_ACTIONS
 STATE_LEN = 1052
 NUM_ACTIONS = 43
 
@@ -49,25 +49,25 @@ class SplendorDataset(Dataset):
 
 
 class MLP(nn.Module):
-    def __init__(self, input_size=STATE_LEN, hidden_size=512, num_actions=NUM_ACTIONS):
+    def __init__(self, input_size=STATE_LEN, hidden_size=512, hidden_layers=1, out_size=NUM_ACTIONS):
         super(MLP, self).__init__()
-        self.fc1 = nn.Linear(input_size, hidden_size)
-        self.fc2 = nn.Linear(hidden_size, hidden_size)
-        self.fc3 = nn.Linear(hidden_size, num_actions)
+        self.input_layer = nn.Linear(input_size, hidden_size)
+        self.hidden_layers = nn.ModuleList([
+            nn.Linear(hidden_size, hidden_size) for _ in range(hidden_layers)
+        ])
+        self.output_layer = nn.Linear(hidden_size, out_size)
         self._init_weights()
     
     def _init_weights(self):
-        nn.init.xavier_uniform_(self.fc1.weight)
-        nn.init.zeros_(self.fc1.bias)
-        nn.init.xavier_uniform_(self.fc2.weight)
-        nn.init.zeros_(self.fc2.bias)
-        nn.init.xavier_uniform_(self.fc3.weight)
-        nn.init.zeros_(self.fc3.bias)
+        for layer in [self.input_layer, *self.hidden_layers, self.output_layer]:
+            nn.init.xavier_uniform_(layer.weight)
+            nn.init.zeros_(layer.bias)
 
     def forward(self, x):
-        x = F.relu(self.fc1(x))        
-        x = F.relu(self.fc2(x))        
-        x = F.softmax(self.fc3(x), dim=-1)
+        x = F.relu(self.input_layer(x))
+        for layer in self.hidden_layers:
+            x = F.relu(layer(x))
+        x = F.softmax(self.output_layer(x), dim=-1)
         return x
 
 class ResidualBlock(nn.Module):
@@ -175,15 +175,17 @@ def print_weigths(model):
     print()
 
 
-def save_model(model, path):
+def save_model(model, path, verbose=True):
     model_path = path + '.pth'
     torch.save(model.state_dict(), model_path)
-    print(f'Model is saved to {model_path}')
+    if verbose:
+        print(f'Model is saved to {model_path}')
 
     sm_model_path = path + '.pt'
     sm = torch.jit.script(model)
     sm.save(sm_model_path)
-    print(f'Jit script model is saved to {sm_model_path}')
+    if verbose:
+        print(f'Jit script model is saved to {sm_model_path}')
 
 def train_loop(model, train_loader, val_loader, optimizer, criterion, device, num_epochs, model_path, verbose=True):
     model = model.to(device)
@@ -203,11 +205,11 @@ def train_loop(model, train_loader, val_loader, optimizer, criterion, device, nu
         
         if verbose:
             print_weigths(model)
-            print(classification_report(val_classif_correct, val_classif_pred, labels = list(range(len(ALL_ACTIONS))), target_names = ALL_ACTIONS, zero_division=0))
+            print(classification_report(val_classif_correct, val_classif_pred, labels = list(range(len(PLAYER_ACTIONS))), target_names = PLAYER_ACTIONS, zero_division=0))
 
         if val_loss < best_val_loss:
             best_val_loss = val_loss
-            save_model(model, model_path + '_best')
+            save_model(model, model_path + '_best', verbose)
 
     print("done!")
 
@@ -222,10 +224,10 @@ def train():
     print(f'device: {device}')
 
     global_iter = 2
-    model_path = f'./data/models/mlp_iter{global_iter}'
-    model = MLP(hidden_size=512)
-    # model_path = './data/models/resnet_10k.pth'
-    # model = ResNet(hidden_size=512, num_blocks=3)
+    # model_path = f'./data/models/mlp_iter{global_iter}'
+    # model = MLP(hidden_size=512, hidden_layers=2)
+    model_path = f'./data/models/resnet_iter{global_iter}'
+    model = ResNet(hidden_size=512, num_blocks=2)
     # model.load_state_dict(torch.load(model_path))
 
     train_dataset = SplendorDataset(data_fname_prefix=f'./data/train/iter{global_iter}')
@@ -242,8 +244,8 @@ def train():
     val_data_entropy = data_loss(val_loader, criterion)
     print(f'train data entropy: {train_data_entropy:.4f}, val data entropy: {val_data_entropy:.4f}')
 
-    train_loop(model, train_loader, val_loader, optimizer, criterion, device, num_epochs=30, model_path=model_path, verbose=True)
-    save_model(model, model_path + '_last')
+    train_loop(model, train_loader, val_loader, optimizer, criterion, device, num_epochs=20, model_path=model_path, verbose=False)
+    save_model(model, model_path + '_last', verbose=False)
 
 
 # def export_model_with_torchscript():

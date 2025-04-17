@@ -2,7 +2,7 @@ import numpy as np
 import lightgbm as lgb
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, classification_report
-from prepare_data import ALL_ACTIONS
+from prepare_data import PLAYER_ACTIONS
 import matplotlib.pyplot as plt
 
 STATE_LEN = 1052
@@ -50,7 +50,7 @@ def train():
     print(f"Validation Accuracy: {accuracy:.4f}")
 
     print("\nClassification Report:")
-    print(classification_report(y_val, y_pred, target_names = ALL_ACTIONS))
+    print(classification_report(y_val, y_pred, target_names = PLAYER_ACTIONS))
 
     model_path = './data/models/lgb_10k.pth'
     bst.save_model(model_path)
@@ -67,7 +67,7 @@ def inspect_model():
     # y_pred = bst.predict(X_val, num_iteration=bst.best_iteration)
     # y_pred = np.argmax(y_pred, axis=1)     
     
-    # print(classification_report(y_val, y_pred, target_names = ALL_ACTIONS))
+    # print(classification_report(y_val, y_pred, target_names = PLAYER_ACTIONS))
     lgb.plot_importance(bst, max_num_features=20)
     plt.show()
 

@@ -7,11 +7,11 @@ from pysplendor.splendor import SplendorGameState, SplendorPlayerState, ACTIONS,
 
     
 # all possible actions that are avialable to players
-ALL_ACTIONS = ["s","tr2","tg2","tb2","tw2","tk2","tr1g1b1","tr1g1w1","tr1g1k1","tr1b1w1","tr1b1k1","tr1w1k1","tg1b1w1","tg1b1k1","tg1w1k1","tb1w1k1",
+PLAYER_ACTIONS = ["s","tr2","tg2","tb2","tw2","tk2","tr1g1b1","tr1g1w1","tr1g1k1","tr1b1w1","tr1b1k1","tr1w1k1","tg1b1w1","tg1b1k1","tg1w1k1","tb1w1k1",
                "r0n0","r0n1","r0n2","r0n3","r1n0","r1n1","r1n2","r1n3","r2n0","r2n1","r2n2","r2n3",
                "p0n0","p0n1","p0n2","p0n3","p1n0","p1n1","p1n2","p1n3","p2n0","p2n1","p2n2","p2n3",
                "h0","h1","h2"]
-# ACTION_ID = {a: id for id, a in enumerate(ALL_ACTIONS)}
+# ACTION_ID = {a: id for id, a in enumerate(PLAYER_ACTIONS)}
 
 
 class SplendorGameStateEncoder:
@@ -107,7 +107,7 @@ def prepare_data(traj_file, data_fname_prefix, num_players = 2):
                     # actions.append(ACTION_ID[str(action)]) # ints
                     rewards.append(reward) # 0 or 1 
                     if traj.freqs:
-                        freq_vec = [0.0] * len(ALL_ACTIONS)
+                        freq_vec = [0.0] * len(PLAYER_ACTIONS)
                         sum_count = sum([x[1] for x in traj.freqs[move_num]])
                         for action_id, count in traj.freqs[move_num]:
                             freq_vec[action_id] = count / sum_count                    
@@ -128,6 +128,6 @@ def prepare_data(traj_file, data_fname_prefix, num_players = 2):
 
 
 if __name__ == '__main__':
-    # print(len(ALL_ACTIONS))
+    # print(len(PLAYER_ACTIONS))
     prepare_data('./data/traj_dump_2k_mcc1_it500_ws20_m1.txt', './data/val/iter2f')
     prepare_data('./data/traj_dump_20k_mcc1_it500_ws20_m1.txt', './data/train/iter2f')
