@@ -5,6 +5,7 @@ set(SOURCE_FILES
     main.cpp
     mcts.cpp
     nn_policy.cpp
+    random_util.cpp
     splendor.cpp
     splendor_agents.cpp
     util.cpp

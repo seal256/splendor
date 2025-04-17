@@ -7,7 +7,7 @@
             "weighted_selection_moves":-1,
             "policy" : {
                 "type" : "NNPolicy",
-                "model_path": "/Users/seal/projects/splendor/data/models/mlp_iter2_best.pt",
+                "model_path": "/Users/seal/projects/splendor/data/models/mlp_iter1_best.pt",
                 "num_players": 2
             }
         },
@@ -23,8 +23,8 @@
             }
         }
     ],
-    "num_games": 1000,
-    "num_workers": 10,
+    "num_games": 10,
+    "num_workers": 1,
     "verbose": false,
     "save_freqs": true,
     "dump_trajectories": "data/traj_dump.txt"

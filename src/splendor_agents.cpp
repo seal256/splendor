@@ -164,6 +164,12 @@ mcts::MCTSParams parse_mcts_params(const json& jsn) {
     if (jsn.contains("weighted_selection_moves")) {
         params.weighted_selection_moves = jsn["weighted_selection_moves"];
     }
+    if (jsn.contains("p_noise_level")) {
+        params.p_noise_level = jsn["p_noise_level"];
+    }
+    if (jsn.contains("alpha")) {
+        params.alpha = jsn["alpha"];
+    }
     if (jsn.contains("max_rollout_len")) {
         params.max_rollout_len = jsn["max_rollout_len"];
     }

@@ -30,3 +30,5 @@ size_t weighted_random_choice(const std::vector<T>& weights) {
   
     return weights.size() - 1;
 }
+
+std::vector<double> sample_dirichlet(double alpha, size_t len);

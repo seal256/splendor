@@ -21,11 +21,13 @@ struct Node {
 };
 
 struct MCTSParams {
-    int iterations = 1000; // number of iterations
-    double exploration = 1.4; // exploration constant C
-    int weighted_selection_moves = -1; // before this move number in the game best action will be selected with weights, then greedy
-    int max_choice_children = 100;
-    double value_weight = 0.5; // Weight for combining rollout and value estimates
+    int iterations = 1000;              // number of iterations of the search procedure
+    double exploration = 1.4;           // exploration constant C
+    int weighted_selection_moves = -1;  // before this move number in the game best action will be selected with weights, then greedy
+    int max_choice_children = 100;      // max children of a chance node. The rest are discarded and not included in the search tree
+    double p_noise_level = 0.25;        // fraction of noise in the probabilities estimated by the policy
+    double alpha = 0.03;                // dirichlet distribution constant
+    double value_weight = 0.5;          // Weight for combining rollout and value estimates
     int max_rollout_len = 500;
     bool use_selection_policy = true;
     bool use_rollout_policy = false;

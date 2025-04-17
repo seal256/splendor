@@ -193,11 +193,21 @@ std::shared_ptr<Node> PolicyMCTS::select_child(const std::shared_ptr<GameState> 
 void PolicyMCTS::expand_node(const std::shared_ptr<GameState> state, std::shared_ptr<Node> node) {
     const std::vector<int> actions = state->get_actions(); 
     int acting_player = state->active_player();
-    const std::vector<double> probs = acting_player == CHANCE_PLAYER || !this->params.use_selection_policy ?
-        std::vector<double>(actions.size(), 1.0) : policy->predict(state, actions); 
+    bool use_policy = acting_player != CHANCE_PLAYER && this->params.use_selection_policy;
+    std::vector<double> probs;
+    if (use_policy) {
+        probs = policy->predict(state, actions); 
+        double eps = this->params.p_noise_level;
+        if (eps > 0) {
+            const auto noise = sample_dirichlet(this->params.alpha, probs.size());
+            for (size_t n = 0; n < probs.size(); n++) {
+                probs[n] = (1.0 - eps) * probs[n] + eps * noise[n];
+            }
+        }
+    }
     for (size_t id = 0; id < actions.size(); id++) {
         auto child_node = std::make_shared<Node>(actions[id], node.get(), acting_player);
-        child_node->p = probs[id];
+        child_node->p = use_policy ? probs[id] : 1.0;
         node->children.push_back(child_node);
     }
     random_shuffle(node->children.begin(), node->children.end());
@@ -260,11 +270,14 @@ std::shared_ptr<Node> PVMCTS::select_child(const std::shared_ptr<GameState> stat
 void PVMCTS::expand_node(const std::shared_ptr<GameState> state, std::shared_ptr<Node> node) {
     const std::vector<int> actions = state->get_actions(); 
     int acting_player = state->active_player();
-    const std::vector<double> probs = acting_player == CHANCE_PLAYER || !this->params.use_selection_policy ?
-        std::vector<double>(actions.size(), 1.0) : policy->predict(state, actions); 
+    bool use_policy = acting_player != CHANCE_PLAYER && this->params.use_selection_policy;
+    std::vector<double> probs;
+    if (use_policy) {
+        probs = policy->predict(state, actions); 
+    }
     for (size_t id = 0; id < actions.size(); id++) {
         auto child_node = std::make_shared<Node>(actions[id], node.get(), acting_player);
-        child_node->p = probs[id];
+        child_node->p = use_policy ? probs[id] : 1.0;
         node->children.push_back(child_node);
     }
     random_shuffle(node->children.begin(), node->children.end());
