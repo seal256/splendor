@@ -31,6 +31,7 @@ struct MCTSParams {
     int max_rollout_len = 500;
     bool use_selection_policy = true;
     bool use_rollout_policy = false;
+    bool train = false;                 // Train mode enables training specific features like noise and weighted move selection
 };
 
 class MCTS {

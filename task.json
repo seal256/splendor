@@ -4,10 +4,12 @@
             "type": "PolicyMCTSAgent",
             "iterations": 500,
             "max_choice_children": 1,
-            "weighted_selection_moves":-1,
+            "weighted_selection_moves":20,
+            "p_noise_level":0.25,
+            "train":true,
             "policy" : {
                 "type" : "NNPolicy",
-                "model_path": "/Users/seal/projects/splendor/data/models/mlp_iter1_best.pt",
+                "model_path": "/Users/seal/projects/splendor/data/models/mlp_iter2_best.pt",
                 "num_players": 2
             }
         },
@@ -15,7 +17,9 @@
             "type": "PolicyMCTSAgent",
             "iterations": 500,
             "max_choice_children": 1,
-            "weighted_selection_moves":-1,
+            "weighted_selection_moves":20,
+            "p_noise_level":0.25,
+            "train":true,
             "policy" : {
                 "type" : "NNPolicy",
                 "model_path": "/Users/seal/projects/splendor/data/models/mlp_iter1_best.pt",
@@ -23,8 +27,8 @@
             }
         }
     ],
-    "num_games": 10,
-    "num_workers": 1,
+    "num_games": 400,
+    "num_workers": 10,
     "verbose": false,
     "save_freqs": true,
     "dump_trajectories": "data/traj_dump.txt"

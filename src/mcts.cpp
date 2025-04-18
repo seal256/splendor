@@ -64,13 +64,7 @@ int MCTS::best_action() {
     if (root->children.empty()) {
         throw std::runtime_error("No actions available");
     }
-    if (root_state->move_num() > params.weighted_selection_moves) {
-        auto best_child = std::max_element(root->children.begin(), root->children.end(),
-            [](const std::shared_ptr<Node>& a, const std::shared_ptr<Node>& b) {
-                return a->visits < b->visits;
-            });
-        return (*best_child)->action;
-    } else {
+    if (this->params.train && root_state->move_num() < params.weighted_selection_moves) {
         std::vector<int> visits;
         visits.reserve(root->children.size());
         for (const auto& child : root->children) {
@@ -78,6 +72,13 @@ int MCTS::best_action() {
         }
         size_t child_idx = weighted_random_choice(visits);
         return root->children[child_idx]->action;
+        
+    } else {
+        auto best_child = std::max_element(root->children.begin(), root->children.end(),
+            [](const std::shared_ptr<Node>& a, const std::shared_ptr<Node>& b) {
+                return a->visits < b->visits;
+            });
+        return (*best_child)->action;
     }
 }
 
@@ -198,7 +199,7 @@ void PolicyMCTS::expand_node(const std::shared_ptr<GameState> state, std::shared
     if (use_policy) {
         probs = policy->predict(state, actions); 
         double eps = this->params.p_noise_level;
-        if (eps > 0) {
+        if (this->params.train && eps > 0) {
             const auto noise = sample_dirichlet(this->params.alpha, probs.size());
             for (size_t n = 0; n < probs.size(); n++) {
                 probs[n] = (1.0 - eps) * probs[n] + eps * noise[n];

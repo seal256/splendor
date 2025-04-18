@@ -185,6 +185,9 @@ mcts::MCTSParams parse_mcts_params(const json& jsn) {
     if (jsn.contains("value_weight")) {
         params.value_weight = jsn["value_weight"];
     }    
+    if (jsn.contains("train")) {
+        params.train = jsn["train"];
+    }    
     return params;
 }
 
