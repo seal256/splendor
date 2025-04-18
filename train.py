@@ -213,7 +213,7 @@ def train_loop(model, train_loader, val_loader, optimizer, criterion, device, nu
 
     print("done!")
 
-def train():
+def train(model_name, train_dir, val_dir):
     # seed = 1828
     # np.random.seed(seed)
     # torch.manual_seed(seed)
@@ -223,15 +223,13 @@ def train():
     device = "mps" if torch.backends.mps.is_available() else "cpu"
     print(f'device: {device}')
 
-    global_iter = 2
-    # model_path = f'./data/models/mlp_iter{global_iter}'
-    # model = MLP(hidden_size=512, hidden_layers=2)
-    model_path = f'./data/models/resnet_iter{global_iter}'
-    model = ResNet(hidden_size=512, num_blocks=2)
+    model = MLP(hidden_size=512, hidden_layers=1)
+    # model_path = f'./data/models/resnet_iter{global_iter}'
+    # model = ResNet(hidden_size=512, num_blocks=2)
     # model.load_state_dict(torch.load(model_path))
 
-    train_dataset = SplendorDataset(data_fname_prefix=f'./data/train/iter{global_iter}')
-    val_dataset = SplendorDataset(data_fname_prefix=f'./data/val/iter{global_iter}')
+    train_dataset = SplendorDataset(data_fname_prefix=train_dir)
+    val_dataset = SplendorDataset(data_fname_prefix=val_dir)
     print(f'train set len: {len(train_dataset)} val set len: {len(val_dataset)}')
     
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
@@ -244,8 +242,8 @@ def train():
     val_data_entropy = data_loss(val_loader, criterion)
     print(f'train data entropy: {train_data_entropy:.4f}, val data entropy: {val_data_entropy:.4f}')
 
-    train_loop(model, train_loader, val_loader, optimizer, criterion, device, num_epochs=20, model_path=model_path, verbose=False)
-    save_model(model, model_path + '_last', verbose=False)
+    train_loop(model, train_loader, val_loader, optimizer, criterion, device, num_epochs=20, model_path=model_name, verbose=False)
+    save_model(model, model_name + '_last', verbose=False)
 
 
 # def export_model_with_torchscript():
@@ -256,6 +254,9 @@ def train():
 #     sm.save('./data/models/mlp_10k_bw.pt')
 
 if __name__ == "__main__":
-
-    train()
+    global_iter = 2
+    model_name = f'./data/models/mlp_iter{global_iter}'
+    train_dir = f'./data/train/iter{global_iter}'
+    val_dir = f'./data/val/iter{global_iter}'
+    train(model_name, train_dir, val_dir)
 

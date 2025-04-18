@@ -129,5 +129,5 @@ def prepare_data(traj_file, data_fname_prefix, num_players = 2):
 
 if __name__ == '__main__':
     # print(len(PLAYER_ACTIONS))
-    prepare_data('./data/traj_dump_2k_mcc1_it500_ws20_m1.txt', './data/val/iter2f')
-    prepare_data('./data/traj_dump_20k_mcc1_it500_ws20_m1.txt', './data/train/iter2f')
+    prepare_data('./data/traj_dump_1k_mcc1_it500_ws20_m1_n.txt', './data/val/iter2n')
+    prepare_data('./data/traj_dump_10k_mcc1_it500_ws20_m1_n.txt', './data/train/iter2n')
