@@ -367,14 +367,14 @@ std::vector<int> SplendorGameState::get_actions() const {
     }
 
     // 2. Reserve a card
-    if (player.hand_cards.size() < rules->max_hand_cards) {
-        for (const auto& action_id : ACTION_TYPE_IDS[ActionType::RESERVE]) {
-            const auto& action = ACTIONS[action_id];
-            if (action.pos < cards[action.level].size()) {
-                actions.push_back(action_id);
-            }
-        }
-    }
+    // if (player.hand_cards.size() < rules->max_hand_cards) {
+    //     for (const auto& action_id : ACTION_TYPE_IDS[ActionType::RESERVE]) {
+    //         const auto& action = ACTIONS[action_id];
+    //         if (action.pos < cards[action.level].size()) {
+    //             actions.push_back(action_id);
+    //         }
+    //     }
+    // }
 
     // 3. Purchase a card from the table
     for (int level = 0; level < cards.size(); ++level) {
