@@ -2,32 +2,32 @@
     "agents": [
         {
             "type": "PolicyMCTSAgent",
-            "iterations": 1000,
+            "iterations": 500,
             "max_choice_children": 1,
-            "weighted_selection_moves":20,
-            "p_noise_level":0.25,
+            "weighted_selection_moves":10,
+            "p_noise_level":0.1,
             "train":true,
             "policy" : {
-                "type" : "NNPolicy",
-                "model_path": "/Users/seal/projects/splendor/data/models/mlp_iter2_best.pt",
-                "num_players": 2
+                "type" : "ConstantPolicy",
+                "num_actions":43,
+                "probs": [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
             }
         },
         {
             "type": "PolicyMCTSAgent",
-            "iterations": 1000,
+            "iterations": 500,
             "max_choice_children": 1,
-            "weighted_selection_moves":20,
-            "p_noise_level":0.25,
+            "weighted_selection_moves":10,
+            "p_noise_level":0.1,
             "train":true,
             "policy" : {
-                "type" : "NNPolicy",
-                "model_path": "/Users/seal/projects/splendor/data/models/mlp_iter2_best.pt",
-                "num_players": 2
+                "type" : "ConstantPolicy",
+                "num_actions":43,
+                "probs": [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
             }
         }
     ],
-    "num_games": 50,
+    "num_games": 11000,
     "num_workers": 10,
     "verbose": false,
     "save_freqs": true,

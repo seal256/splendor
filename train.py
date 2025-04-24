@@ -242,7 +242,7 @@ def train(model_name, train_dir, val_dir):
     val_data_entropy = data_loss(val_loader, criterion)
     print(f'train data entropy: {train_data_entropy:.4f}, val data entropy: {val_data_entropy:.4f}')
 
-    train_loop(model, train_loader, val_loader, optimizer, criterion, device, num_epochs=20, model_path=model_name, verbose=False)
+    train_loop(model, train_loader, val_loader, optimizer, criterion, device, num_epochs=5, model_path=model_name, verbose=False)
     save_model(model, model_name + '_last', verbose=False)
 
 
@@ -254,9 +254,9 @@ def train(model_name, train_dir, val_dir):
 #     sm.save('./data/models/mlp_10k_bw.pt')
 
 if __name__ == "__main__":
-    global_iter = 2
-    model_name = f'./data/models/mlp_iter{global_iter}'
-    train_dir = f'./data/train/iter{global_iter}'
-    val_dir = f'./data/val/iter{global_iter}'
+    global_iter = ''
+    model_name = f'./data_2304/model{global_iter}'
+    train_dir = f'./data_2304/train{global_iter}'
+    val_dir = f'./data_2304/val{global_iter}'
     train(model_name, train_dir, val_dir)
 

@@ -9,10 +9,10 @@ from prepare_data import prepare_data
 AGENT = {
             "type": "PolicyMCTSAgent",
             "iterations": 500,
-            "exploration": 3.0,
+            "exploration": 1.4,
             "max_choice_children": 1,
             "weighted_selection_moves":20,
-            "p_noise_level":0.1,
+            "p_noise_level":0.0,
             "alpha":1.0, # creates a uniform distribution
             "train":False,
             "policy" : {
@@ -47,10 +47,8 @@ def game_config(model_a_path, model_b_path, traj_path, num_games=1000, train=Fal
     config["dump_trajectories"] = traj_path
     return config
 
-WORK_DIR = '/Users/seal/projects/splendor/data_1804'
-
 def run_games(name_suffix, step, model_a_path, model_b_path, num_games=1000, train=False):
-    print(f'Rinning {name_suffix} games step {step}')
+    print(f'Running {name_suffix} games step {step}')
 
     traj_path = f'{WORK_DIR}/traj_{name_suffix}_step_{step}.txt'
     config = game_config(model_a_path, model_b_path, traj_path, num_games, train)
@@ -72,9 +70,7 @@ def first_agent_score(traj_path):
     
 
 def self_play_loop():
-    os.mkdir(WORK_DIR)
-
-    best_model = f'./models/mlp_it0_best.pt'
+    best_model = '/Users/seal/projects/splendor/data_1804/mlp_it0_best.pt'
     for step in range(20):
         print(f'\n\n---- Global step {step} ----\n')
 
@@ -105,6 +101,10 @@ def self_play_loop():
             print('Stopping')
             break
 
+if __name__ == '__main__':
+    WORK_DIR = '/Users/seal/projects/splendor/data_1804b'
+    # os.mkdir(WORK_DIR)
+    self_play_loop()
 
 
 
