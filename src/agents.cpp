@@ -79,6 +79,22 @@ ActionInfo PolicyMCTSAgent::get_action_info(const std::shared_ptr<GameState>& ga
     return action_info;
 }
 
+ValueMCTSAgent::ValueMCTSAgent(const std::shared_ptr<mcts::Value>& value, const mcts::MCTSParams& params)
+    : value(value), mcts_params(params) {}
+
+int ValueMCTSAgent::get_action(const std::shared_ptr<GameState>& game_state) const {
+    mcts::ValueMCTS mcts(game_state, value, mcts_params);
+    return mcts.search();
+}
+
+ActionInfo ValueMCTSAgent::get_action_info(const std::shared_ptr<GameState>& game_state) const {
+    ActionInfo action_info;
+    mcts::ValueMCTS mcts(game_state, value, mcts_params);
+    action_info.action = mcts.search();
+    action_info.freqs = mcts.root_visits();
+    return action_info;
+}
+
 PVMCTSAgent::PVMCTSAgent(const std::shared_ptr<mcts::Policy>& policy,
                        const std::shared_ptr<mcts::Value>& value,
                        const mcts::MCTSParams& params)

@@ -57,17 +57,21 @@ void splendor_stats(const std::vector<Trajectory>& trajectories) {
     }
 
     // short report
+    double sum_scores = 0;
     for (int player = 0; player < num_players; ++player) {
-        double mean_score = total_scores[player] / num_games;
-        double conf_interval = 2.58 * std::sqrt(mean_score * (1.0 - mean_score) / num_games); // 99% confidence
+        sum_scores += total_scores[player];
+    }
+    for (int player = 0; player < num_players; ++player) {
+        double mean_score = total_scores[player] / sum_scores;
+        double conf_interval = 2.58 * std::sqrt(mean_score * (1.0 - mean_score) / sum_scores); // 99% confidence
         std::cout << std::format("{:.3f} ({:.2f}), ",  mean_score, conf_interval);
     }
     std::cout << std::endl;
 
     for (int player = 0; player < num_players; ++player) {
         auto cards_avg_dev = avg_dev(card_counts[player]);
-        double mean_score = total_scores[player] / num_games;
-        double conf_interval = 2.58 * std::sqrt(mean_score * (1.0 - mean_score) / num_games); // 99% confidence
+        double mean_score = total_scores[player] / sum_scores;
+        double conf_interval = 2.58 * std::sqrt(mean_score * (1.0 - mean_score) / sum_scores); // 99% confidence
         std::cout << std::format(
             "player {}: total score: {:.1f}, mean score: {:.3f}, "
             "score conf interval: {:.3f}, cards mean: {:.1f}, "

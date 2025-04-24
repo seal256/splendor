@@ -33,13 +33,12 @@ public:
     
 };
 
-class AccumValue : public mcts::Value {
+class ColectedPointsValue : public mcts::Value {
     private:
         const double score_norm_;
         
     public:
-        explicit AccumValue(double score_norm = 15.0);
-        
+        ColectedPointsValue(double score_norm = 15.0);
         std::vector<double> predict(const std::shared_ptr<GameState> game_state) const override;
     };
 };

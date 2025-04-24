@@ -199,7 +199,7 @@ void PolicyMCTS::expand_node(const std::shared_ptr<GameState> state, std::shared
     if (use_policy) {
         probs = policy->predict(state, actions); 
         double eps = this->params.p_noise_level;
-        if (this->params.train && eps > 0) {
+        if (this->params.train && eps > 0 && node->parent == nullptr) { // only for root node
             const auto noise = sample_dirichlet(this->params.alpha, probs.size());
             for (size_t n = 0; n < probs.size(); n++) {
                 probs[n] = (1.0 - eps) * probs[n] + eps * noise[n];
@@ -236,6 +236,23 @@ std::vector<double> PolicyMCTS::ploicy_rollout(std::shared_ptr<GameState> state)
         state->apply_action(actions[random_idx]);
     }
     return state->rewards();
+}
+
+ValueMCTS::ValueMCTS(const std::shared_ptr<GameState>& state, const std::shared_ptr<Value>& value, const MCTSParams& params)
+    : MCTS(state, params), value(value) {}
+
+std::vector<double> ValueMCTS::rollout(std::shared_ptr<GameState> state) {
+    std::vector<double> predicted_values = value->predict(state);
+    std::vector<double> rewards = this->random_rollout(state);
+    
+    if (!state->is_terminal()) {
+        double wv = this->params.value_weight;
+        for (size_t player = 0; player < rewards.size(); ++player) {
+            rewards[player] = (1.0 - wv) * rewards[player] + wv * predicted_values[player];
+        }
+    }
+
+    return rewards;
 }
 
 PVMCTS::PVMCTS(const std::shared_ptr<GameState>& state, 
@@ -291,7 +308,7 @@ std::vector<double> PVMCTS::rollout(std::shared_ptr<GameState> state) {
     std::vector<double> predicted_values = value->predict(state);
     std::vector<double> rewards = this->params.use_rollout_policy ? this->ploicy_rollout(state) : this->random_rollout(state);
     
-    if (state->is_terminal()) {
+    if (!state->is_terminal()) {
         double wv = this->params.value_weight;
         for (size_t player = 0; player < rewards.size(); ++player) {
             rewards[player] = (1.0 - wv) * rewards[player] + wv * predicted_values[player];

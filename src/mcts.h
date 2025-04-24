@@ -91,6 +91,19 @@ public:
     virtual ~Value() = default;
 };
 
+class ValueMCTS : public MCTS {
+private:
+    const std::shared_ptr<Value> value;
+    
+public:
+    ValueMCTS(const std::shared_ptr<GameState>& state, 
+            const std::shared_ptr<Value>& value,
+            const MCTSParams& params = MCTSParams());
+
+protected:
+    std::vector<double> rollout(std::shared_ptr<GameState> state) override;
+};
+
 class PVMCTS : public MCTS {
 private:
     const std::shared_ptr<Policy> policy;

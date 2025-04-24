@@ -77,9 +77,9 @@ std::vector<Trajectory> run_games(const GameSeriesTask& task) {
         Trajectory trajectory = run_one_game(game_state, task.agents, random_agent, task.verbose, task.save_states, task.save_freqs);
         trajectories.push_back(trajectory);
 
-        std::cout << "Game " << game_num << " of " << task.num_games 
-                  << " actions: " << trajectory.actions.size()
-                  << "\n";
+        // std::cout << "Game " << game_num << " of " << task.num_games 
+        //           << " actions: " << trajectory.actions.size()
+        //           << "\n";
     }
     
     auto end = std::chrono::high_resolution_clock::now();

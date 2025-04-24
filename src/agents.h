@@ -57,11 +57,22 @@ private:
     const mcts::MCTSParams mcts_params;
 
 public:
-    PolicyMCTSAgent(const std::shared_ptr<mcts::Policy>& policy, 
-                    const mcts::MCTSParams& params = mcts::MCTSParams());
+    PolicyMCTSAgent(const std::shared_ptr<mcts::Policy>& policy, const mcts::MCTSParams& params = mcts::MCTSParams());
     int get_action(const std::shared_ptr<GameState>& game_state) const override;
     ActionInfo get_action_info(const std::shared_ptr<GameState>& game_state) const override;
 };
+
+class ValueMCTSAgent : public Agent {
+private:
+    const std::shared_ptr<mcts::Value> value;
+    const mcts::MCTSParams mcts_params;
+
+public:
+    ValueMCTSAgent(const std::shared_ptr<mcts::Value>& value, const mcts::MCTSParams& params = mcts::MCTSParams());
+    int get_action(const std::shared_ptr<GameState>& game_state) const override;
+    ActionInfo get_action_info(const std::shared_ptr<GameState>& game_state) const override;
+};
+
 
 class PVMCTSAgent : public Agent {
 private:

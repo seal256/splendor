@@ -131,13 +131,13 @@ std::vector<int> SplendorGameStateEncoder::state_to_vec(const SplendorGameState&
     return result;
 }
 
-AccumValue::AccumValue(double score_norm) 
+ColectedPointsValue::ColectedPointsValue(double score_norm) 
     : score_norm_(score_norm) {}
 
-std::vector<double> AccumValue::predict(const std::shared_ptr<GameState> game_state) const {
+std::vector<double> ColectedPointsValue::predict(const std::shared_ptr<GameState> game_state) const {
     auto splendor_state = std::dynamic_pointer_cast<SplendorGameState>(game_state);
     if (!splendor_state) {
-        throw std::runtime_error("AccumValue requires SplendorGameState");
+        throw std::runtime_error("ColectedPointsValue requires SplendorGameState");
     }
 
     std::vector<double> values;
@@ -236,13 +236,22 @@ std::shared_ptr<Agent> construct_agent(const json& jsn) {
         auto policy = construct_policy(jsn["policy"]);
         return std::make_shared<PolicyMCTSAgent>(policy, params);
 
+    } else if (agent_type == "ValueMCTSAgent") {
+        mcts::MCTSParams params = parse_mcts_params(jsn);
+        // if (!jsn.contains("value")) {
+        //     throw std::runtime_error("ValueMCTSAgent must contain a 'value' section.");
+        // }
+        // auto policy = construct_policy(jsn["value"]);
+        auto value = std::make_shared<splendor::ColectedPointsValue>();
+        return std::make_shared<ValueMCTSAgent>(value, params);
+
     } else if (agent_type == "PVMCTSAgent") {
         mcts::MCTSParams params = parse_mcts_params(jsn);
         if (!jsn.contains("policy")) {
             throw std::runtime_error("PolicyMCTSAgent must contain a 'policy' section.");
         }
         auto policy = construct_policy(jsn["policy"]);
-        auto value = std::make_shared<splendor::AccumValue>();
+        auto value = std::make_shared<splendor::ColectedPointsValue>();
         return std::make_shared<PVMCTSAgent>(policy, value, params);
 
     // } else if (agent_type == "CheatMCTSAgent") {
