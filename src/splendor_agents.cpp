@@ -149,6 +149,31 @@ std::vector<double> ColectedPointsValue::predict(const std::shared_ptr<GameState
     return values;
 }
 
+PointsWinnerValue::PointsWinnerValue() {}
+
+std::vector<double> PointsWinnerValue::predict(const std::shared_ptr<GameState> game_state) const {
+    auto splendor_state = std::dynamic_pointer_cast<SplendorGameState>(game_state);
+    if (!splendor_state) {
+        throw std::runtime_error("PointsWinnerValue requires SplendorGameState");
+    }
+
+    std::vector<double> values(splendor_state->players.size(), 0.0);
+
+    int max_ponits = 0;
+    for (const auto& player : splendor_state->players) {
+        if (player.points > max_ponits) {
+            max_ponits = player.points;
+        }
+    }
+    for (size_t n = 0; n < splendor_state->players.size(); ++n) {
+        if (splendor_state->players[n].points >= max_ponits) {
+            values[n] = 1.0; // player with most points is expected to win
+        }
+    }
+
+    return values;
+}
+
 } // namespace splendor
 
 
@@ -189,6 +214,24 @@ mcts::MCTSParams parse_mcts_params(const json& jsn) {
         params.train = jsn["train"];
     }    
     return params;
+}
+
+std::shared_ptr<mcts::Value> construct_value(const json& jsn) {
+    if (!jsn.contains("type")) {
+        throw std::runtime_error("JSON value configuration must contain a 'type' field.");
+    }
+    std::string type = jsn["type"];
+
+    if (type == "ColectedPointsValue") {
+        double score_norm = jsn.value("score_norm", 15.0);
+        return std::make_shared<splendor::ColectedPointsValue>(score_norm);
+
+    } else if (type == "PointsWinnerValue") {
+        return std::make_shared<splendor::PointsWinnerValue>();
+    
+    } else {
+        throw std::runtime_error("Unknown value type: " + type);
+    }
 }
 
 std::shared_ptr<mcts::Policy> construct_policy(const json& jsn) {
@@ -238,11 +281,10 @@ std::shared_ptr<Agent> construct_agent(const json& jsn) {
 
     } else if (agent_type == "ValueMCTSAgent") {
         mcts::MCTSParams params = parse_mcts_params(jsn);
-        // if (!jsn.contains("value")) {
-        //     throw std::runtime_error("ValueMCTSAgent must contain a 'value' section.");
-        // }
-        // auto policy = construct_policy(jsn["value"]);
-        auto value = std::make_shared<splendor::ColectedPointsValue>();
+        if (!jsn.contains("value")) {
+            throw std::runtime_error("ValueMCTSAgent must contain a 'value' section.");
+        }
+        auto value = construct_value(jsn["value"]);
         return std::make_shared<ValueMCTSAgent>(value, params);
 
     } else if (agent_type == "PVMCTSAgent") {

@@ -33,14 +33,22 @@ public:
     
 };
 
+// returns normalised accumulated win points for each player
 class ColectedPointsValue : public mcts::Value {
-    private:
-        const double score_norm_;
-        
-    public:
-        ColectedPointsValue(double score_norm = 15.0);
-        std::vector<double> predict(const std::shared_ptr<GameState> game_state) const override;
-    };
+private:
+    const double score_norm_;
+    
+public:
+    ColectedPointsValue(double score_norm = 15.0);
+    std::vector<double> predict(const std::shared_ptr<GameState> game_state) const override;
 };
 
+// returns 1 for the player with most win points
+class PointsWinnerValue : public mcts::Value {
+public:
+    PointsWinnerValue();
+    std::vector<double> predict(const std::shared_ptr<GameState> game_state) const override;
+};
+
+};
 
