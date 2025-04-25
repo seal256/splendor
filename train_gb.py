@@ -1,7 +1,7 @@
 import numpy as np
 import lightgbm as lgb
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score, classification_report
+from sklearn.metrics import accuracy_score, classification_report, mean_squared_error, mean_absolute_error
 from prepare_data import PLAYER_ACTIONS
 import matplotlib.pyplot as plt
 
@@ -19,41 +19,56 @@ def load_train_data(data_fname_prefix, state_len=STATE_LEN):
     rewards = rewards.astype(np.float32)
     return states, actions, rewards
 
+# def train_policy(model_name, train_dir, val_dir):
+#     X_train, y_train, _ = load_train_data(train_dir)
+#     X_val, y_val, _ = load_train_data(val_dir)
 
-def train():
-    X, y, _ = load_train_data('./data/train/iter0_10k')
+#     train_data = lgb.Dataset(X_train, label=y_train)
+#     val_data = lgb.Dataset(X_val, label=y_val, reference=train_data)
 
-    X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
+#     params = {
+#         'objective': 'cross_entropy',
+#         'boosting': 'gbdt',
+#         'learning_rate': 0.05,
+#         'verbose': 0
+#     }
+
+#     num_round = 100
+#     bst = lgb.train(params, train_data, num_round, valid_sets=[train_data, val_data], callbacks=[lgb.log_evaluation(period=5)])
+
+#     y_pred = bst.predict(X_val, num_iteration=bst.best_iteration)
+
+#     accuracy = accuracy_score(y_val, y_pred)
+#     print(f"val accuracy: {accuracy:.4f}")
+#     print(classification_report(y_val, y_pred, labels=list(range(len(PLAYER_ACTIONS))), target_names = PLAYER_ACTIONS))
+
+#     bst.save_model(model_name)
+
+def train_value(model_name, train_dir, val_dir):
+    X_train, _, y_train = load_train_data(train_dir)
+    X_val, _, y_val = load_train_data(val_dir)
+
     train_data = lgb.Dataset(X_train, label=y_train)
     val_data = lgb.Dataset(X_val, label=y_val, reference=train_data)
 
     params = {
-        'objective': 'multiclass',  
-        'num_class': NUM_ACTIONS,  
-        'metric': 'multi_logloss',
-        'boosting_type': 'gbdt',
-        'num_leaves': 31,
+        'objective': 'regression',
+        'metric': 'l2', 
+        'boosting': 'gbdt',
         'learning_rate': 0.05,
-        'feature_fraction': 0.9,
-        'bagging_fraction': 0.8,
-        'bagging_freq': 5,
         'verbose': 0
     }
 
     num_round = 100
-    bst = lgb.train(params, train_data, num_round, valid_sets=[val_data], callbacks=[lgb.log_evaluation(period=5)])
+    bst = lgb.train(params, train_data, num_round, valid_sets=[train_data, val_data], callbacks=[lgb.log_evaluation(period=5)])
 
     y_pred = bst.predict(X_val, num_iteration=bst.best_iteration)
-    y_pred = np.argmax(y_pred, axis=1) 
 
-    accuracy = accuracy_score(y_val, y_pred)
-    print(f"Validation Accuracy: {accuracy:.4f}")
+    mse = mean_squared_error(y_val, y_pred)
+    mae = mean_absolute_error(y_val, y_pred)
+    print(f'val mse: {mse:.3f} mae: {mae:.3f}')
 
-    print("\nClassification Report:")
-    print(classification_report(y_val, y_pred, target_names = PLAYER_ACTIONS))
-
-    model_path = './data/models/lgb_10k.pth'
-    bst.save_model(model_path)
+    bst.save_model(model_name)
 
 def inspect_model():
     # X, y, _ = load_train_data('./data/train/iter0_10k')
@@ -72,5 +87,13 @@ def inspect_model():
     plt.show()
 
 if __name__ == '__main__':
-    # inspect_model()
-    train()
+    work_dir = './data_2404'
+    name = 'reserve_masked'
+
+    model_name = f'{work_dir}/lgb_model_{name}.txt'
+    train_dir = f'{work_dir}/train_{name}'
+    val_dir = f'{work_dir}/val_{name}'
+
+    train_value(model_name, train_dir, val_dir)
+    # train_policy(model_name, train_dir, val_dir)
+    
