@@ -223,7 +223,7 @@ def train(model_name, train_dir, val_dir):
     device = "mps" if torch.backends.mps.is_available() else "cpu"
     print(f'device: {device}')
 
-    model = MLP(hidden_size=512, hidden_layers=1)
+    model = MLP(hidden_size=512, hidden_layers=2)
     # model_path = f'./data/models/resnet_iter{global_iter}'
     # model = ResNet(hidden_size=512, num_blocks=2)
     # model.load_state_dict(torch.load(model_path))
@@ -242,7 +242,7 @@ def train(model_name, train_dir, val_dir):
     val_data_entropy = data_loss(val_loader, criterion)
     print(f'train data entropy: {train_data_entropy:.4f}, val data entropy: {val_data_entropy:.4f}')
 
-    train_loop(model, train_loader, val_loader, optimizer, criterion, device, num_epochs=5, model_path=model_name, verbose=False)
+    train_loop(model, train_loader, val_loader, optimizer, criterion, device, num_epochs=25, model_path=model_name, verbose=False)
     save_model(model, model_name + '_last', verbose=False)
 
 
@@ -254,9 +254,12 @@ def train(model_name, train_dir, val_dir):
 #     sm.save('./data/models/mlp_10k_bw.pt')
 
 if __name__ == "__main__":
-    global_iter = ''
-    model_name = f'./data_2304/model{global_iter}'
-    train_dir = f'./data_2304/train{global_iter}'
-    val_dir = f'./data_2304/val{global_iter}'
+    # global_iter = ''
+    work_dir = './data_2404'
+    name = 'reserve_masked_50k'
+
+    model_name = f'{work_dir}/model_{name}'
+    train_dir = f'{work_dir}/train_{name}'
+    val_dir = f'{work_dir}/val_{name}'
     train(model_name, train_dir, val_dir)
 

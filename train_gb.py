@@ -19,6 +19,8 @@ def load_train_data(data_fname_prefix, state_len=STATE_LEN):
     rewards = rewards.astype(np.float32)
     return states, actions, rewards
 
+# https://lightgbm.readthedocs.io/en/latest/Parameters.html#metric-parameters
+
 # def train_policy(model_name, train_dir, val_dir):
 #     X_train, y_train, _ = load_train_data(train_dir)
 #     X_val, y_val, _ = load_train_data(val_dir)

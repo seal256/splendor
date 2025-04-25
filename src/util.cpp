@@ -62,23 +62,23 @@ void splendor_stats(const std::vector<Trajectory>& trajectories) {
         sum_scores += total_scores[player];
     }
     for (int player = 0; player < num_players; ++player) {
-        double mean_score = total_scores[player] / sum_scores;
-        double conf_interval = 2.58 * std::sqrt(mean_score * (1.0 - mean_score) / sum_scores); // 99% confidence
-        std::cout << std::format("{:.3f} ({:.2f}), ",  mean_score, conf_interval);
+        double win_rate = total_scores[player] / sum_scores;
+        double conf_interval = 2.58 * std::sqrt(win_rate * (1.0 - win_rate) / sum_scores); // 99% confidence
+        std::cout << std::format("{:.3f} ({:.2f}), ",  win_rate, conf_interval);
     }
     std::cout << std::endl;
 
     for (int player = 0; player < num_players; ++player) {
         auto cards_avg_dev = avg_dev(card_counts[player]);
-        double mean_score = total_scores[player] / sum_scores;
-        double conf_interval = 2.58 * std::sqrt(mean_score * (1.0 - mean_score) / sum_scores); // 99% confidence
+        double win_rate = total_scores[player] / sum_scores;
+        double conf_interval = 2.58 * std::sqrt(win_rate * (1.0 - win_rate) / sum_scores); // 99% confidence
         std::cout << std::format(
             "player {}: total score: {:.1f}, mean score: {:.3f}, "
             "score conf interval: {:.3f}, cards mean: {:.1f}, "
             "cards std dev: {:.1f}\n",
             player,
             total_scores[player],
-            mean_score,
+            win_rate,
             conf_interval,
             cards_avg_dev.first,
             cards_avg_dev.second
@@ -86,7 +86,7 @@ void splendor_stats(const std::vector<Trajectory>& trajectories) {
     }
 
     auto len_mean_dev = avg_dev(game_lengths);
-    std::cout << "game length avg: " << len_mean_dev.first << " std dev: " << len_mean_dev.second << "\n";
+    std::cout << std::format("game length avg: {:.1f}, std dev: {:.1f}\n", len_mean_dev.first, len_mean_dev.second);
 }
 
 void run_model(const json& task_json) {

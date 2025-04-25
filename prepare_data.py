@@ -101,7 +101,7 @@ def prepare_data(traj_file, data_fname_prefix, num_players = 2):
             action = traj.actions[move_num]
             if state.active_player() != CHANCE_PLAYER: # ignore chance nodes
                 reward = traj.rewards[state.active_player()]
-                if True: #reward > 0.5: # select only winner moves
+                if reward > 0.5: # select only winner moves
                     state_vec = state_encoder.state_to_vec(state)
                     states.append(np.packbits(state_vec)) # compressed bytes
                     # actions.append(ACTION_ID[str(action)]) # ints
@@ -128,6 +128,7 @@ def prepare_data(traj_file, data_fname_prefix, num_players = 2):
 
 
 if __name__ == '__main__':
-    # print(len(PLAYER_ACTIONS))
-    prepare_data('./data_2304/traj_train.txt', './data_2304/train')
-    prepare_data('./data_2304/traj_val.txt', './data_2304/val')
+    work_dir = './data_2404'
+    name = 'reserve_masked_50k'
+    prepare_data(f'{work_dir}/traj_{name[:-4]}_val.txt', f'./{work_dir}/val_{name}')
+    prepare_data(f'{work_dir}/traj_{name}.txt', f'./{work_dir}/train_{name}')
