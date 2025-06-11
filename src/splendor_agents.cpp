@@ -11,8 +11,7 @@ using nlohmann::json;
 namespace splendor {
 
 SplendorGameStateEncoder::SplendorGameStateEncoder(int num_players) 
-    : num_players_(num_players), 
-        rules_(&DEFAULT_RULES.at(num_players)) {
+    : num_players_(num_players), rules_(DEFAULT_RULES.at(num_players)) {
     calculate_vector_lengths();
 }
 

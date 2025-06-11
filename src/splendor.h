@@ -110,7 +110,7 @@ struct SplendorGameRules {
     }
 };
 
-extern const std::unordered_map<int, SplendorGameRules> DEFAULT_RULES;
+extern const std::unordered_map<size_t, std::shared_ptr<const SplendorGameRules>> DEFAULT_RULES;
 
 enum class ActionError {
     NONE,
@@ -133,7 +133,7 @@ enum class ActionError {
 
 class SplendorGameState : public GameState {
 public:
-    const SplendorGameRules* rules;
+    std::shared_ptr<const SplendorGameRules> rules;
     int round;
     int player_to_move;
     int skips;                 // number of players that skipped move in this round. If all players skipped, the game ends
@@ -146,7 +146,7 @@ public:
     std::vector<SplendorPlayerState> players;
 
 public:
-    SplendorGameState(int num_players, const SplendorGameRules* rules = nullptr);
+    SplendorGameState(int num_players, std::shared_ptr<const SplendorGameRules> rules = nullptr);
 
     std::vector<int> get_actions() const override;
     int active_player() const override;

@@ -65,15 +65,20 @@ GameSeriesTask::GameSeriesTask(const json& jsn) {
     for (const auto& player_config : jsn.at("agents")) {
         agents.push_back(construct_agent(player_config));
     }
+    win_points = jsn.value("win_points", 0);
 }
 
 std::vector<Trajectory> run_games(const GameSeriesTask& task) {
     std::vector<Trajectory> trajectories;
     std::shared_ptr<Agent> random_agent = std::make_shared<RandomAgent>();
+    auto rules = std::make_shared<splendor::SplendorGameRules>(*splendor::DEFAULT_RULES.at(task.agents.size()));
+    if (task.win_points > 0) {
+        rules->win_points = task.win_points;
+    }
 
     auto start = std::chrono::high_resolution_clock::now();
     for (int game_num = 0; game_num < task.num_games; ++game_num) {
-        auto game_state = std::make_shared<splendor::SplendorGameState>(task.agents.size());
+        auto game_state = std::make_shared<splendor::SplendorGameState>(task.agents.size(), rules);
         Trajectory trajectory = run_one_game(game_state, task.agents, random_agent, task.verbose, task.save_states, task.save_freqs);
         trajectories.push_back(trajectory);
 

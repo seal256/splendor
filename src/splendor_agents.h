@@ -14,7 +14,7 @@ namespace splendor {
 class SplendorGameStateEncoder : public mcts::GameStateEncoder {
 private:
     int num_players_;
-    const SplendorGameRules* rules_;
+    std::shared_ptr<const SplendorGameRules> rules_;
     const int max_card_points_ = 5; // The maximum number of win points on splendor cards
     const int max_cards_ = 6;       // The maximum number of cards of one color that the player can acquire
     

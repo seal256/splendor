@@ -261,10 +261,14 @@ std::unordered_map<ActionType, std::vector<int>> init_action_type_ids(const std:
 
 std::unordered_map<ActionType, std::vector<int>> ACTION_TYPE_IDS = init_action_type_ids(ACTIONS); // indices for all action types
 
-const std::unordered_map<int, SplendorGameRules> DEFAULT_RULES = {{2, SplendorGameRules(2)}, {3, SplendorGameRules(3)}, {4, SplendorGameRules(4)}};
+const std::unordered_map<size_t, std::shared_ptr<const SplendorGameRules>> DEFAULT_RULES = {
+    {2, std::make_shared<SplendorGameRules>(2)},
+    {3, std::make_shared<SplendorGameRules>(3)},
+    {4, std::make_shared<SplendorGameRules>(4)}
+};
 
-SplendorGameState::SplendorGameState(int num_players, const SplendorGameRules* rules)
-    : rules(rules ? rules : &DEFAULT_RULES.at(num_players)),
+SplendorGameState::SplendorGameState(int num_players, std::shared_ptr<const SplendorGameRules> rules)
+    : rules(rules ? rules : DEFAULT_RULES.at(num_players)),
       round(0),
       player_to_move(0),
       skips(0),

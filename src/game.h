@@ -37,6 +37,7 @@ public:
     bool verbose;
     bool save_states;
     bool save_freqs;
+    int win_points;
     std::string dump_trajectories;
 
     GameSeriesTask(const json& jsn);

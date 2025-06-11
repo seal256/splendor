@@ -242,7 +242,7 @@ def train(model_name, train_dir, val_dir):
     val_data_entropy = data_loss(val_loader, criterion)
     print(f'train data entropy: {train_data_entropy:.4f}, val data entropy: {val_data_entropy:.4f}')
 
-    train_loop(model, train_loader, val_loader, optimizer, criterion, device, num_epochs=25, model_path=model_name, verbose=False)
+    train_loop(model, train_loader, val_loader, optimizer, criterion, device, num_epochs=5, model_path=model_name, verbose=False)
     save_model(model, model_name + '_last', verbose=False)
 
 
@@ -253,13 +253,41 @@ def train(model_name, train_dir, val_dir):
 #     sm = torch.jit.script(model)
 #     sm.save('./data/models/mlp_10k_bw.pt')
 
+def custom_model_evaluation():
+    work_dir = './data_2404'
+
+    device = 'mps'
+    model_name = f'{work_dir}/model_reserve_masked_50k_best.pt'
+    model = torch.jit.load(model_name, map_location=torch.device(device))
+    model.eval()
+    print_weigths(model)
+        
+    criterion = loss
+    batch_size = 1024
+
+    for move in [5, 10, 15, 20, 25, 30]:
+        val_dir = f'{work_dir}/val_rm10k_move{move}'
+        val_dataset = SplendorDataset(data_fname_prefix=val_dir)
+        val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+        val_data_entropy = data_loss(val_loader, criterion)
+
+        val_loss, val_classif_pred, val_classif_correct = validate(model, val_loader, criterion, device)
+        val_accuracy = accuracy_score(val_classif_correct, val_classif_pred)
+
+        print(f"move {move}: val loss: {val_loss:.4f}, accuracy: {val_accuracy:.4f}")
+        print(f'data entropy: {val_data_entropy:.4f}')
+        # print(classification_report(val_classif_correct, val_classif_pred, labels = list(range(len(PLAYER_ACTIONS))), target_names = PLAYER_ACTIONS, zero_division=0))
+
+
 if __name__ == "__main__":
     # global_iter = ''
-    work_dir = './data_2404'
-    name = 'reserve_masked_50k'
+    work_dir = './data_1405'
+    # name = 'reserve_masked_50k'
+    name = 'wp3'
 
     model_name = f'{work_dir}/model_{name}'
     train_dir = f'{work_dir}/train_{name}'
     val_dir = f'{work_dir}/val_{name}'
     train(model_name, train_dir, val_dir)
+    # custom_model_evaluation()
 
