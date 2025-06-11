@@ -1,7 +1,7 @@
 import random
 
 from .game_state import GameState, Agent
-from .splendor import SplendorGameState, SplendorPlayerState, GOLD_GEM, Action, ActionType
+from .splendor import SplendorGameState, SplendorPlayerState, GOLD_GEM, Action, ActionType, ACTION_IDS, ACTIONS_STR
 from .mcts import MCTS
 
 class RandomAgent(Agent):
@@ -11,9 +11,16 @@ class RandomAgent(Agent):
 
 class HumanPlayer(Agent):
     def get_action(self, game_state):
-        player_name = game_state.players[game_state.player_to_move].name
-        action_str = input(player_name + ' move: ')
-        return Action.from_str(action_str)
+        valid_actions = [ACTIONS_STR[id] for id in game_state.get_actions()]
+        print(f'Valid moves: {",".join(valid_actions)}')
+        while True:
+            action_str = input(f'player {game_state.active_player()} move: ')
+            if action_str not in ACTION_IDS:
+                print(f'Invalid move: {action_str}')
+            elif action_str not in valid_actions:
+                print(f'Forbidden move: {action_str}')
+            else:
+                return ACTION_IDS[action_str]
 
 class MCTSAgent(Agent):
     def __init__(self, mcts_params = None):

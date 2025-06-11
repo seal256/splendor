@@ -99,7 +99,7 @@ def prepare_data(traj_file, data_fname_prefix, num_players = 2):
         state = traj.initial_state.copy()
         for move_num in range(len(traj.actions)):
             action = traj.actions[move_num]
-            if state.active_player() != CHANCE_PLAYER: # ignore chance nodes
+            if state.active_player() != CHANCE_PLAYER: # ignore chance nodes  # and move_num >= 25 and move_num < 30: 
                 reward = traj.rewards[state.active_player()]
                 if reward > 0.5: # select only winner moves
                     state_vec = state_encoder.state_to_vec(state)
@@ -128,7 +128,8 @@ def prepare_data(traj_file, data_fname_prefix, num_players = 2):
 
 
 if __name__ == '__main__':
-    work_dir = './data_2404'
-    name = 'reserve_masked_50k'
-    prepare_data(f'{work_dir}/traj_{name[:-4]}_val.txt', f'./{work_dir}/val_{name}')
-    prepare_data(f'{work_dir}/traj_{name}.txt', f'./{work_dir}/train_{name}')
+    work_dir = './data_1405'
+    name = 'wp3'
+    prepare_data(f'{work_dir}/traj_{name}_val.txt', f'./{work_dir}/val_{name}')
+    prepare_data(f'{work_dir}/traj_{name}_train.txt', f'./{work_dir}/train_{name}')
+    # prepare_data(f'{work_dir}/traj_reserve_masked_train.txt', f'./{work_dir}/val_rm10k_move30')

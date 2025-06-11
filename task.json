@@ -27,9 +27,9 @@
             }
         }
     ],
-    "num_games": 11000,
+    "num_games": 10000,
     "num_workers": 10,
     "verbose": false,
     "save_freqs": true,
-    "dump_trajectories": "data/traj_dump.txt"
+    "dump_trajectories": "data_1405/traj_dump_wp3.txt"
 }

@@ -35,6 +35,9 @@ def run_one_game(game_state, agents, verbose=False, save_states=False):
 
     active_player = game_state.active_player()
     while not game_state.is_terminal():
+        if verbose:
+            print(f"\n{game_state}\n")
+
         if active_player == CHANCE_PLAYER:
             legal_actions = game_state.get_actions()
             idx = random.randint(0, len(legal_actions) - 1)
@@ -43,7 +46,6 @@ def run_one_game(game_state, agents, verbose=False, save_states=False):
             action = agents[active_player].get_action(game_state)
 
         if verbose:
-            print(f"\n{game_state}\n")
             print(f"selected action: {ACTIONS_STR[action]}\n")
 
         trajectory.actions.append(action)

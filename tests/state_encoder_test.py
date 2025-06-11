@@ -38,9 +38,7 @@ def test_cpp_vs_python_state_encoder_implementation_equivalence():
 
     # 2. Run python version
 
-    # model = load_mlp_model(model_path)
-    model = torch.jit.load(model_path)
-    model.eval()
+    model = load_mlp_model(model_path)
     state_encoder = SplendorGameStateEncoder(num_players)
     policy = NNPolicy(model, state_encoder)
 

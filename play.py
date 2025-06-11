@@ -4,8 +4,8 @@ import random, json
 from concurrent.futures import ProcessPoolExecutor
 
 from pysplendor.game_state import GameState, CHANCE_PLAYER
-from pysplendor.agents import RandomAgent, MCTSAgent, Agent
-from pysplendor.splendor import SplendorGameState, ACTIONS_STR
+from pysplendor.agents import RandomAgent, MCTSAgent, Agent, HumanPlayer
+from pysplendor.splendor import SplendorGameState, ACTIONS_STR, SplendorGameRules, DEFAULT_RULES
 from pysplendor.game import run_one_game, Trajectory, traj_loader
 from pysplendor.mcts import MCTS, PVMCTS, Value, PolicyMCTS, Policy, MCTSParams
 from prepare_data import SplendorGameStateEncoder
@@ -143,10 +143,29 @@ def run_tournament():
     # tournament(agents, num_games=100, verbose=False)
     tournament_parallel(agents, num_games=100, num_workers=10)
 
+
+def human_play():
+    mcts_params = MCTSParams(iterations=500)
+    # mcts_agent = MCTSAgent(mcts_params)
+
+    model = load_mlp_model('/Users/seal/projects/splendor/data_1405/model_step_3_best.pt')
+    state_encoder = SplendorGameStateEncoder(2)
+    policy = NNPolicy(model, state_encoder)
+    mcts_agent = PolicyMCTSAgent(policy, mcts_params)
+
+    human_agent = HumanPlayer()
+    agents = [human_agent, mcts_agent]
+    rules = SplendorGameRules(len(agents))
+    rules.win_points = 3
+    game_state = SplendorGameState(len(agents), rules)
+    traj = run_one_game(game_state, agents, verbose=True)
+    
 if __name__ == '__main__':
+    human_play()
+
     # run_tournament()
 
-    tloader = traj_loader('data/traj_dump_1k_mcc1_it500_ws20_m1.txt')
-    for _ in range(1):
-        traj = next(tloader)
-    print_game_record(traj)
+    # tloader = traj_loader('data/traj_dump_1k_mcc1_it500_ws20_m1.txt')
+    # for _ in range(1):
+    #     traj = next(tloader)
+    # print_game_record(traj)

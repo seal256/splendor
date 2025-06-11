@@ -221,6 +221,7 @@ ACTIONS_STR = ["s", # skip move
 ]
 
 ACTIONS = [Action.from_str(a) for a in ACTIONS_STR]
+ACTION_IDS = {s: idx for idx, s in enumerate(ACTIONS_STR)}
 
 def init_action_type_ids(actions: list[Action]) -> dict[str, list[int]]:
     """Initialize a dictionary mapping action types to their corresponding action IDs."""

@@ -28,6 +28,7 @@ CONFIG = {
     "num_workers": 9,
     "verbose": False,
     "save_freqs": True,
+    "win_points": 3,
     "dump_trajectories": ""
 }
 
@@ -70,13 +71,13 @@ def first_agent_score(traj_path):
     
 
 def self_play_loop():
-    best_model = '/Users/seal/projects/splendor/data_1804/mlp_it0_best.pt'
-    for step in range(20):
+    best_model = '/Users/seal/projects/splendor/data_1405/model_wp3_best.pt'
+    for step in range(5):
         print(f'\n\n---- Global step {step} ----\n')
 
         # run self play sessions with previous best model
-        train_traj = run_games('train', step, best_model, best_model, 10000, train=True)
-        val_traj = run_games('val', step, best_model, best_model, 1000, train=False)
+        val_traj = run_games('val', step, best_model, best_model, 10000, train=False)
+        train_traj = run_games('train', step, best_model, best_model, 50000, train=True)
 
         # preprocess data for model training
         train_dir = f'{WORK_DIR}/train_step_{step}'
@@ -102,9 +103,11 @@ def self_play_loop():
             break
 
 if __name__ == '__main__':
-    WORK_DIR = '/Users/seal/projects/splendor/data_1804b'
+    WORK_DIR = '/Users/seal/projects/splendor/data_1405'
     # os.mkdir(WORK_DIR)
     self_play_loop()
+    # best_model = '/Users/seal/projects/splendor/data_1405/model_wp3_best.pt'
+    # run_games('val', 0, best_model, best_model, 100, train=False)
 
 
 
