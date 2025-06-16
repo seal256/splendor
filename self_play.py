@@ -48,7 +48,7 @@ def game_config(model_a_path, model_b_path, traj_path, num_games=1000, train=Fal
     config["dump_trajectories"] = traj_path
     return config
 
-def run_games(name_suffix, step, model_a_path, model_b_path, num_games=1000, train=False):
+def run_games(name_suffix, step, model_a_path, model_b_path, num_games=1000, train=False, rotate_players=False):
     print(f'Running {name_suffix} games step {step}')
 
     traj_path = f'{WORK_DIR}/traj_{name_suffix}_step_{step}.txt'
@@ -60,7 +60,7 @@ def run_games(name_suffix, step, model_a_path, model_b_path, num_games=1000, tra
     return traj_path # path to resulting trajectories
 
 def first_agent_score(traj_path):
-    '''Returns win rate of the first agent'''
+    '''Returns the win rate of the first agent'''
     tloader = traj_loader(traj_path)
     first_player_score = 0
     total_score = 0
@@ -70,7 +70,9 @@ def first_agent_score(traj_path):
     return first_player_score / total_score
     
 
-def self_play_loop():
+def self_play_steps():
+    '''Only data from a previous iteration is used for self play and training of the next model'''
+
     best_model = '/Users/seal/projects/splendor/data_1405/model_wp3_best.pt'
     for step in range(5):
         print(f'\n\n---- Global step {step} ----\n')
@@ -102,8 +104,67 @@ def self_play_loop():
             print('Stopping')
             break
 
+def self_play_loop():
+    # best_model = '/Users/seal/projects/splendor/data/models/random_2_512.pt'
+    best_model = '/Users/seal/projects/splendor/data_1106/model_step_96_best.pt'
+    start_step = 100
+
+    games_per_update = 5000
+    val_fraction = 0.1
+    training_iterations = 10 # training_iterations * games_per_update trajectories will be used for each train iteration
+    max_iterations = 200
+    train_epochs = 1
+    new_model_eval_games = 1000
+    min_win_rate = 0.55
+    max_iters_without_improvement = 10
+
+    train_dirs = [f'{WORK_DIR}/train_step_{step}' for step in range(start_step)]
+    val_dirs = [f'{WORK_DIR}/val_step_{step}' for step in range(start_step)]
+    iters_without_improvement = 0
+
+    for step in range(start_step, max_iterations):
+        print(f'\n\n---- Iteration {step} ----\n')
+
+        # run self play sessions with previous best model
+        print(f'Collecting {games_per_update} new self play games')
+        val_traj = run_games('val', step, best_model, best_model, games_per_update * val_fraction, train=False)
+        train_traj = run_games('train', step, best_model, best_model, games_per_update, train=True)
+
+        # preprocess data for model training
+        train_dir = f'{WORK_DIR}/train_step_{step}'
+        val_dir = f'{WORK_DIR}/val_step_{step}'
+        prepare_data(train_traj, train_dir)
+        prepare_data(val_traj, val_dir)
+        train_dirs.append(train_dir)
+        val_dirs.append(val_dir)
+
+        # train new model     
+        if len(train_dirs) < training_iterations:
+            continue
+        print('Training new model')
+        model_name_prefix = f'{WORK_DIR}/model_step_{step}'
+        train(model_name_prefix, train_dirs[-training_iterations:], val_dirs[-training_iterations:], train_epochs, best_model)
+        new_model = model_name_prefix + '_best.pt'
+
+        # evaluate new model against the previous best one
+        new_vs_best_traj = run_games('new_vs_best', step, new_model, best_model, new_model_eval_games, train=False)
+        new_model_win_rate = first_agent_score(new_vs_best_traj)
+        print(f'New model win rate vs previous best model: {new_model_win_rate:.3f}')
+        if (new_model_win_rate > min_win_rate):
+            best_model = new_model
+            print(f'New best model is: {best_model}')
+            iters_without_improvement = 0
+        
+        else:
+            iters_without_improvement += 1
+            print(f'Iterations without improvement: {iters_without_improvement}')
+            if iters_without_improvement >= max_iters_without_improvement:
+                print('Stopping')
+                break
+
+
 if __name__ == '__main__':
-    WORK_DIR = '/Users/seal/projects/splendor/data_1405'
+    WORK_DIR = '/Users/seal/projects/splendor/data_1106'
     # os.mkdir(WORK_DIR)
     self_play_loop()
     # best_model = '/Users/seal/projects/splendor/data_1405/model_wp3_best.pt'

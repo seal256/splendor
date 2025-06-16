@@ -148,13 +148,13 @@ def human_play():
     mcts_params = MCTSParams(iterations=500)
     # mcts_agent = MCTSAgent(mcts_params)
 
-    model = load_mlp_model('/Users/seal/projects/splendor/data_1405/model_step_3_best.pt')
+    model = load_mlp_model('/Users/seal/projects/splendor/data_1106/model_step_162_best.pt')
     state_encoder = SplendorGameStateEncoder(2)
     policy = NNPolicy(model, state_encoder)
     mcts_agent = PolicyMCTSAgent(policy, mcts_params)
 
     human_agent = HumanPlayer()
-    agents = [human_agent, mcts_agent]
+    agents = [mcts_agent, human_agent]
     rules = SplendorGameRules(len(agents))
     rules.win_points = 3
     game_state = SplendorGameState(len(agents), rules)

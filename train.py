@@ -11,24 +11,39 @@ STATE_LEN = 1052
 NUM_ACTIONS = 43
 
 class SplendorDataset(Dataset):
-    def __init__(self, data_fname_prefix, state_len = STATE_LEN):
+    def __init__(self, data_fname_prefix, state_len=STATE_LEN):
         """
         Args:
-            data_fname_prefix (str): Prefix of the .npy files containing the states, actions, and rewards.
+            data_fname_prefix (str or list): Either a single prefix string or a list of prefixes 
+                                            for the .npy files containing states, actions, and rewards.
+            state_len (int): Length of the state vector.
         
         Notes:
-            keeps all the data in memory
+            Keeps all the data in memory.
         """
-        states = np.load(data_fname_prefix + "_states.npy", allow_pickle=True)
-        actions = np.load(data_fname_prefix + "_actions.npy", allow_pickle=True)
-        rewards = np.load(data_fname_prefix + "_rewards.npy", allow_pickle=True)
-
-        states = np.unpackbits(states, axis=1, count=state_len)
-
-        self.states = torch.tensor(states, dtype=torch.float32)
-        self.actions = torch.tensor(actions, dtype=torch.float32)
-        self.rewards = torch.tensor(rewards, dtype=torch.float32)
-
+        if isinstance(data_fname_prefix, str):
+            data_fname_prefix = [data_fname_prefix]
+            
+        all_states = []
+        all_actions = []
+        all_rewards = []
+        
+        for prefix in data_fname_prefix:
+            states = np.load(prefix + "_states.npy", allow_pickle=True)
+            actions = np.load(prefix + "_actions.npy", allow_pickle=True)
+            rewards = np.load(prefix + "_rewards.npy", allow_pickle=True)
+            
+            states = np.unpackbits(states, axis=1, count=state_len)
+            
+            all_states.append(states)
+            all_actions.append(actions)
+            all_rewards.append(rewards)
+        
+        # Concatenate all loaded data
+        self.states = torch.tensor(np.concatenate(all_states), dtype=torch.float32)
+        self.actions = torch.tensor(np.concatenate(all_actions), dtype=torch.float32)
+        self.rewards = torch.tensor(np.concatenate(all_rewards), dtype=torch.float32)
+    
     def __len__(self):
         return len(self.states)
 
@@ -213,7 +228,30 @@ def train_loop(model, train_loader, val_loader, optimizer, criterion, device, nu
 
     print("done!")
 
-def train(model_name, train_dir, val_dir):
+def train(trained_model_name, train_dir, val_dir, num_epochs=5, load_model_name=None):
+    """
+    Trains a neural network model on Splendor game trajectories preprocessed by prepare_data() function.
+
+    Args:
+        trained_model_name (str): Name/identifier for the trained model. 
+        
+        train_dir (str or list): Path prefix(es) for training data files. This can be either:
+                                - A single string prefix (e.g., "./data/train")
+                                - A list of prefixes (e.g., ["./data/train1", "./data/train2"])
+                                The actual data files should have suffixes:
+                                "_states.npy", "_actions.npy", and "_rewards.npy"
+                                as produced by prepare_data()
+        
+        val_dir (str or list): Path prefix(es) for validation data files. Accepts the same formats
+                              as train_dir. Files should follow the same naming convention.
+
+        num_epochs (int, optional): Number of training epochs to run.
+        
+        load_model_name (str, optional): Name of a pre-trained model to load and continue training.
+                                        If None, training starts from scratch.
+
+    """
+
     # seed = 1828
     # np.random.seed(seed)
     # torch.manual_seed(seed)
@@ -224,9 +262,10 @@ def train(model_name, train_dir, val_dir):
     print(f'device: {device}')
 
     model = MLP(hidden_size=512, hidden_layers=2)
-    # model_path = f'./data/models/resnet_iter{global_iter}'
     # model = ResNet(hidden_size=512, num_blocks=2)
-    # model.load_state_dict(torch.load(model_path))
+    if load_model_name is not None:
+        print(f'Loading model from {load_model_name}')
+        model = torch.jit.load(load_model_name, map_location=torch.device(device))
 
     train_dataset = SplendorDataset(data_fname_prefix=train_dir)
     val_dataset = SplendorDataset(data_fname_prefix=val_dir)
@@ -242,8 +281,8 @@ def train(model_name, train_dir, val_dir):
     val_data_entropy = data_loss(val_loader, criterion)
     print(f'train data entropy: {train_data_entropy:.4f}, val data entropy: {val_data_entropy:.4f}')
 
-    train_loop(model, train_loader, val_loader, optimizer, criterion, device, num_epochs=5, model_path=model_name, verbose=False)
-    save_model(model, model_name + '_last', verbose=False)
+    train_loop(model, train_loader, val_loader, optimizer, criterion, device, num_epochs, model_path=trained_model_name, verbose=False)
+    # save_model(model, trained_model_name + '_last', verbose=False)
 
 
 # def export_model_with_torchscript():
@@ -278,16 +317,18 @@ def custom_model_evaluation():
         print(f'data entropy: {val_data_entropy:.4f}')
         # print(classification_report(val_classif_correct, val_classif_pred, labels = list(range(len(PLAYER_ACTIONS))), target_names = PLAYER_ACTIONS, zero_division=0))
 
+def random_model(model_name):
+    model = MLP(hidden_size=512, hidden_layers=2)
+    save_model(model, model_name, verbose=True)
 
 if __name__ == "__main__":
-    # global_iter = ''
+    # random_model('data/models/random_2_512')
+    # custom_model_evaluation()
     work_dir = './data_1405'
-    # name = 'reserve_masked_50k'
     name = 'wp3'
 
     model_name = f'{work_dir}/model_{name}'
     train_dir = f'{work_dir}/train_{name}'
     val_dir = f'{work_dir}/val_{name}'
     train(model_name, train_dir, val_dir)
-    # custom_model_evaluation()
-
+    

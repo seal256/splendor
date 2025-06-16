@@ -6,11 +6,11 @@
             "max_choice_children": 1,
             "weighted_selection_moves":10,
             "p_noise_level":0.1,
-            "train":true,
+            "train":false,
             "policy" : {
-                "type" : "ConstantPolicy",
-                "num_actions":43,
-                "probs": [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+                "type" : "NNPolicy",
+                "model_path": "/Users/seal/projects/splendor/data_1106/model_step_96_best.pt",
+                "num_players": 2
             }
         },
         {
@@ -19,17 +19,18 @@
             "max_choice_children": 1,
             "weighted_selection_moves":10,
             "p_noise_level":0.1,
-            "train":true,
+            "train":false,
             "policy" : {
-                "type" : "ConstantPolicy",
-                "num_actions":43,
-                "probs": [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+                "type" : "NNPolicy",
+                "model_path": "/Users/seal/projects/splendor/data_1106/model_step_162_best.pt",
+                "num_players": 2
             }
         }
     ],
-    "num_games": 10000,
+    "num_games": 1000,
     "num_workers": 10,
     "verbose": false,
     "save_freqs": true,
-    "dump_trajectories": "data_1405/traj_dump_wp3.txt"
+    "win_points": 3,
+    "dump_trajectories": "data_1106/random_vs_constant.txt"
 }
