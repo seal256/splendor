@@ -322,15 +322,15 @@ def random_model(model_name):
 if __name__ == "__main__":
     # random_model('data/models/random_2_512')
     # custom_model_evaluation()
-    work_dir = '/Users/seal/projects/splendor/data_1806'
+    work_dir = '/Users/seal/projects/splendor/data_0107'
     
     # name = 'step_19'
     # model_name = f'{work_dir}/model_{name}'
     # train_dir = f'{work_dir}/train_{name}'
     # val_dir = f'{work_dir}/val_{name}'
-    step = 19
+    step = 9
     model_name = f'{work_dir}/model_step_{step}'
     train_dir = [f'{work_dir}/train_step_{n}' for n in range(step + 1)]
     val_dir = [f'{work_dir}/val_step_{n}' for n in range(step + 1)]
-    train(model_name, train_dir, val_dir, num_epochs=20)
+    train(model_name, train_dir, val_dir, num_epochs=1)
     

@@ -10,7 +10,7 @@
             "train":false,
             "policy" : {
                 "type" : "NNPolicy",
-                "model_path": "/Users/seal/projects/splendor/data_1106/model_step_13_best.pt",
+                "model_path": "/Users/seal/projects/splendor/data_0107/model_step_9_best.pt",
                 "num_players": 2
             }
         },
@@ -24,7 +24,7 @@
             "train":false,
             "policy" : {
                 "type" : "NNPolicy",
-                "model_path": "/Users/seal/projects/splendor/data_1106/model_step_9_best.pt",
+                "model_path": "/Users/seal/projects/splendor/data/models/random_2_512.pt",
                 "num_players": 2
             }
         }
@@ -35,5 +35,5 @@
     "verbose": false,
     "save_freqs": true,
     "win_points": 3,
-    "dump_trajectories": "data_1106/random_vs_constant.txt"
+    "dump_trajectories": "data_0107/traj_new_vs_best_step_9.txt"
 }

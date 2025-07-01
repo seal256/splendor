@@ -70,7 +70,7 @@ def agent_score(agent_name, traj_path):
     first_player_score = 0
     total_score = 0
     for traj in tloader:
-        agent_idx = traj["agent_names"].index(agent_name)
+        agent_idx = traj.agent_names.index(agent_name)
         first_player_score += traj.rewards[agent_idx]
         total_score += sum(traj.rewards)
     return first_player_score / total_score
@@ -111,9 +111,9 @@ def self_play_steps():
             break
 
 def self_play_loop():
-    # best_model = '/Users/seal/projects/splendor/data/models/random_2_512.pt'
-    best_model = '/Users/seal/projects/splendor/data_1906/model_step_9_best.pt'
-    start_step = 12
+    best_model = '/Users/seal/projects/splendor/data/models/random_2_512.pt'
+    # best_model = f'{WORK_DIR}/model_step_14_best.pt'
+    start_step = 0
 
     games_per_update = 5000
     val_fraction = 0.1
@@ -121,7 +121,7 @@ def self_play_loop():
     max_iterations = 100
     train_epochs = 1
     new_model_eval_games = 1000
-    min_win_rate = 0.55
+    min_win_rate = 0.54
     max_iters_without_improvement = 12
 
     train_dirs = [f'{WORK_DIR}/train_step_{step}' for step in range(start_step)]
@@ -133,7 +133,7 @@ def self_play_loop():
         print(f'\n\n### {curr_time} Iteration {step} ###\n')
 
         # run self play sessions with previous best model
-        print(f'Collecting {games_per_update} new self play games')
+        print(f'Collecting new self play games using {best_model}')
         val_traj = run_games('val', step, best_model, best_model, games_per_update * val_fraction, train=False, rotate_agents=False)
         train_traj = run_games('train', step, best_model, best_model, games_per_update, train=True, rotate_agents=False)
 
@@ -171,7 +171,7 @@ def self_play_loop():
 
 
 if __name__ == '__main__':
-    WORK_DIR = '/Users/seal/projects/splendor/data_1906'
+    WORK_DIR = '/Users/seal/projects/splendor/data_0107b'
     # os.mkdir(WORK_DIR)
     self_play_loop()
     # best_model = '/Users/seal/projects/splendor/data_1405/model_wp3_best.pt'

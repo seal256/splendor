@@ -5,8 +5,9 @@ from .splendor import SplendorGameState, ACTIONS, ACTIONS_STR
 
 
 class Trajectory():
-    def __init__(self, initial_state, actions, rewards, states=[], freqs=[]):
+    def __init__(self, initial_state, agent_names, actions, rewards, states=[], freqs=[]):
         self.initial_state = initial_state
+        self.agent_names = agent_names
         self.actions = actions # list of integers
         self.rewards = rewards
         self.states = states # for debug only, usually empty
@@ -15,11 +16,12 @@ class Trajectory():
     @classmethod
     def from_json(cls, data):
         initial_state = SplendorGameState.from_json(data['initial_state'])
+        agent_names = data['agent_names']
         actions = data['actions']
         rewards = data['rewards']
         states = [SplendorGameState.from_json(s) for s in data['states']] if 'states' in data else []
         freqs = data.get('freqs',[])
-        return cls(initial_state, actions, rewards, states, freqs)
+        return cls(initial_state, agent_names, actions, rewards, states, freqs)
     
 
 def traj_loader(file_name):
