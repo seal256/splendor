@@ -261,14 +261,15 @@ std::shared_ptr<Agent> construct_agent(const json& jsn) {
     if (!jsn.contains("type")) {
         throw std::runtime_error("JSON configuration must contain a 'type' field.");
     }
-    std::string agent_type = jsn["type"];
+    const std::string agent_type = jsn["type"];
+    const std::string name = jsn.value("name", "");
 
     if (agent_type == "RandomAgent") {
-        return std::make_shared<RandomAgent>();
+        return std::make_shared<RandomAgent>(name);
 
     } else if (agent_type == "MCTSAgent") {
         mcts::MCTSParams params = parse_mcts_params(jsn);
-        return std::make_shared<MCTSAgent>(params);
+        return std::make_shared<MCTSAgent>(name, params);
 
     } else if (agent_type == "PolicyMCTSAgent") {
         mcts::MCTSParams params = parse_mcts_params(jsn);
@@ -276,7 +277,7 @@ std::shared_ptr<Agent> construct_agent(const json& jsn) {
             throw std::runtime_error("PolicyMCTSAgent must contain a 'policy' section.");
         }
         auto policy = construct_policy(jsn["policy"]);
-        return std::make_shared<PolicyMCTSAgent>(policy, params);
+        return std::make_shared<PolicyMCTSAgent>(name, policy, params);
 
     } else if (agent_type == "ValueMCTSAgent") {
         mcts::MCTSParams params = parse_mcts_params(jsn);
@@ -284,7 +285,7 @@ std::shared_ptr<Agent> construct_agent(const json& jsn) {
             throw std::runtime_error("ValueMCTSAgent must contain a 'value' section.");
         }
         auto value = construct_value(jsn["value"]);
-        return std::make_shared<ValueMCTSAgent>(value, params);
+        return std::make_shared<ValueMCTSAgent>(name, value, params);
 
     } else if (agent_type == "PVMCTSAgent") {
         mcts::MCTSParams params = parse_mcts_params(jsn);
@@ -293,7 +294,7 @@ std::shared_ptr<Agent> construct_agent(const json& jsn) {
         }
         auto policy = construct_policy(jsn["policy"]);
         auto value = std::make_shared<splendor::ColectedPointsValue>();
-        return std::make_shared<PVMCTSAgent>(policy, value, params);
+        return std::make_shared<PVMCTSAgent>(name, policy, value, params);
 
     // } else if (agent_type == "CheatMCTSAgent") {
     //     mcts::MCTSParams params = parse_mcts_params(jsn);

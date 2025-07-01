@@ -24,7 +24,7 @@ ActionInfo RandomAgent::get_action_info(const std::shared_ptr<GameState>& game_s
     return action_info;
 }
 
-MCTSAgent::MCTSAgent(const mcts::MCTSParams& params) : mcts_params(params) {}
+MCTSAgent::MCTSAgent(const std::string& name, const mcts::MCTSParams& params) : Agent(name), mcts_params(params) {}
 
 int MCTSAgent::get_action(const std::shared_ptr<GameState>& game_state) const {
     mcts::MCTS mcts(game_state, mcts_params);
@@ -62,9 +62,10 @@ std::vector<double> ConstantPolicy::predict(const std::shared_ptr<GameState> gam
     return action_probs;
 }
 
-PolicyMCTSAgent::PolicyMCTSAgent(const std::shared_ptr<mcts::Policy>& policy, 
-                               const mcts::MCTSParams& params)
-    : policy(policy), mcts_params(params) {}
+PolicyMCTSAgent::PolicyMCTSAgent(const std::string& name, 
+                                const std::shared_ptr<mcts::Policy>& policy, 
+                                const mcts::MCTSParams& params)
+    : Agent(name), policy(policy), mcts_params(params) {}
 
 int PolicyMCTSAgent::get_action(const std::shared_ptr<GameState>& game_state) const {
     mcts::PolicyMCTS mcts(game_state, policy, mcts_params);
@@ -79,8 +80,8 @@ ActionInfo PolicyMCTSAgent::get_action_info(const std::shared_ptr<GameState>& ga
     return action_info;
 }
 
-ValueMCTSAgent::ValueMCTSAgent(const std::shared_ptr<mcts::Value>& value, const mcts::MCTSParams& params)
-    : value(value), mcts_params(params) {}
+ValueMCTSAgent::ValueMCTSAgent(const std::string& name, const std::shared_ptr<mcts::Value>& value, const mcts::MCTSParams& params)
+    : Agent(name), value(value), mcts_params(params) {}
 
 int ValueMCTSAgent::get_action(const std::shared_ptr<GameState>& game_state) const {
     mcts::ValueMCTS mcts(game_state, value, mcts_params);
@@ -95,10 +96,11 @@ ActionInfo ValueMCTSAgent::get_action_info(const std::shared_ptr<GameState>& gam
     return action_info;
 }
 
-PVMCTSAgent::PVMCTSAgent(const std::shared_ptr<mcts::Policy>& policy,
-                       const std::shared_ptr<mcts::Value>& value,
-                       const mcts::MCTSParams& params)
-    : policy(policy), value(value), mcts_params(params) {}
+PVMCTSAgent::PVMCTSAgent(const std::string& name,
+                        const std::shared_ptr<mcts::Policy>& policy,
+                        const std::shared_ptr<mcts::Value>& value,
+                        const mcts::MCTSParams& params)
+    : Agent(name), policy(policy), value(value), mcts_params(params) {}
 
 int PVMCTSAgent::get_action(const std::shared_ptr<GameState>& game_state) const {
     mcts::PVMCTS mcts(game_state, policy, value, mcts_params);

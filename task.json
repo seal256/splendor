@@ -2,6 +2,7 @@
     "agents": [
         {
             "type": "PolicyMCTSAgent",
+            "name": "a",
             "iterations": 500,
             "max_choice_children": 1,
             "weighted_selection_moves":10,
@@ -9,12 +10,13 @@
             "train":false,
             "policy" : {
                 "type" : "NNPolicy",
-                "model_path": "/Users/seal/projects/splendor/data_1106/model_step_96_best.pt",
+                "model_path": "/Users/seal/projects/splendor/data_1106/model_step_13_best.pt",
                 "num_players": 2
             }
         },
         {
             "type": "PolicyMCTSAgent",
+            "name": "b",
             "iterations": 500,
             "max_choice_children": 1,
             "weighted_selection_moves":10,
@@ -22,11 +24,12 @@
             "train":false,
             "policy" : {
                 "type" : "NNPolicy",
-                "model_path": "/Users/seal/projects/splendor/data_1106/model_step_162_best.pt",
+                "model_path": "/Users/seal/projects/splendor/data_1106/model_step_9_best.pt",
                 "num_players": 2
             }
         }
     ],
+    "rotate_agents": true,
     "num_games": 1000,
     "num_workers": 10,
     "verbose": false,

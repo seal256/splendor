@@ -10,16 +10,18 @@ Trajectory run_one_game(std::shared_ptr<GameState> game_state,
                        const std::shared_ptr<Agent> random_agent, 
                        bool verbose, 
                        bool save_states, 
-                       bool save_freqs,
-                       size_t first_player) {
+                       bool save_freqs) {
     Trajectory trajectory;
     trajectory.initial_state = game_state->clone();
-    trajectory.first_player = first_player;
+    trajectory.agent_names.reserve(agents.size());
+    for (const auto& agent : agents) {
+        trajectory.agent_names.push_back(agent->name); // that's unnecessary copying, but Trajectory is fat anyway
+    }
 
     size_t active_player = game_state->active_player();
     size_t num_players = agents.size();
     while (!game_state->is_terminal()) {
-        const auto& agent = active_player == CHANCE_PLAYER ? random_agent : agents[(active_player + first_player) % num_players];
+        const auto& agent = active_player == CHANCE_PLAYER ? random_agent : agents[active_player];
         const auto action_info = agent->get_action_info(game_state);
         const int action = action_info.action;
 
@@ -72,19 +74,33 @@ GameSeriesTask::GameSeriesTask(const json& jsn) {
     win_points = jsn.value("win_points", 0);
 }
 
+std::vector<std::vector<std::shared_ptr<Agent>>> precompute_rotations(const std::vector<std::shared_ptr<Agent>>& original) {
+    std::vector<std::vector<std::shared_ptr<Agent>>> rotations;
+    rotations.reserve(original.size());
+    
+    std::vector<std::shared_ptr<Agent>> current = original;
+    for (size_t idx = 0; idx < original.size(); ++idx) {
+        rotations.push_back(current);
+        std::rotate(current.begin(), current.begin() + 1, current.end());
+    }
+    
+    return rotations;
+}
+
 std::vector<Trajectory> run_games(const GameSeriesTask& task) {
     std::vector<Trajectory> trajectories;
-    std::shared_ptr<Agent> random_agent = std::make_shared<RandomAgent>();
+    std::shared_ptr<Agent> random_agent = std::make_shared<RandomAgent>("");
     auto rules = std::make_shared<splendor::SplendorGameRules>(*splendor::DEFAULT_RULES.at(task.agents.size()));
     if (task.win_points > 0) {
         rules->win_points = task.win_points;
     }
+    const auto& rotations = precompute_rotations(task.agents);
 
     auto start = std::chrono::high_resolution_clock::now();
     for (int game_num = 0; game_num < task.num_games; ++game_num) {
         auto game_state = std::make_shared<splendor::SplendorGameState>(task.agents.size(), rules);
-        size_t first_player = task.rotate_agents ? game_num % task.agents.size() : 0;
-        Trajectory trajectory = run_one_game(game_state, task.agents, random_agent, task.verbose, task.save_states, task.save_freqs, first_player);
+        const auto& agents = task.rotate_agents ? rotations[game_num % task.agents.size()] : task.agents;
+        Trajectory trajectory = run_one_game(game_state, agents, random_agent, task.verbose, task.save_states, task.save_freqs);
         trajectories.push_back(trajectory);
 
         // std::cout << "Game " << game_num << " of " << task.num_games 
@@ -126,7 +142,7 @@ std::vector<Trajectory> run_games_parallel(const GameSeriesTask& task) {
 void to_json(json& j, const Trajectory& traj) {   
     j = {
         {"initial_state", traj.initial_state},
-        {"first_player", traj.first_player},
+        {"agent_names", traj.agent_names},
         {"rewards", traj.rewards},
         {"actions", traj.actions}
     };

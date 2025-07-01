@@ -15,9 +15,9 @@ using json = nlohmann::json;
 
 struct Trajectory {
     std::shared_ptr<GameState> initial_state;
-    size_t first_player = 0;        // index of the player to move first
-    std::vector<int> actions;       // list of actions taken by agents. First action corresponds to agents[first_player]
-    std::vector<double> rewards;    // obtained at the end of the game, given in the order of agents in the game_state
+    std::vector<std::string> agent_names;                   // names of agents in order of their moves in the game
+    std::vector<int> actions;                               // list of actions taken by agents. 
+    std::vector<double> rewards;                            // rewards obtained at the end of the game
     std::vector<std::shared_ptr<GameState>> states;         // optional, full list of game states encountered during the game
     std::vector<std::vector<std::pair<int, int>>> freqs;    // optional, mcts root node action counts for each state
 };
@@ -27,8 +27,7 @@ Trajectory run_one_game(std::shared_ptr<GameState> game_state,
                        const std::shared_ptr<Agent> random_agent, 
                        bool verbose=false, 
                        bool save_states=false, 
-                       bool save_freqs=false,
-                       size_t first_player = 0);
+                       bool save_freqs=false);
 
 class GameSeriesTask {
 public:

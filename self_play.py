@@ -40,9 +40,11 @@ def game_config(model_a_path, model_b_path, traj_path, num_games=1000, train=Fal
     agent_a = deepcopy(AGENT)
     agent_a["policy"]["model_path"] = model_a_path
     agent_a["train"] = train
+    agent_a["name"] = "a"
     agent_b = deepcopy(AGENT)
     agent_b["policy"]["model_path"] = model_b_path
     agent_b["train"] = train
+    agent_b["name"] = "b"
 
     config = deepcopy(CONFIG)
     config["agents"] = [agent_a, agent_b]
@@ -62,13 +64,14 @@ def run_games(name_suffix, step, model_a_path, model_b_path, num_games=1000, tra
 
     return traj_path # path to resulting trajectories
 
-def first_agent_score(traj_path):
+def agent_score(agent_name, traj_path):
     '''Returns the win rate of the first agent'''
     tloader = traj_loader(traj_path)
     first_player_score = 0
     total_score = 0
     for traj in tloader:
-        first_player_score += traj.rewards[0]
+        agent_idx = traj["agent_names"].index(agent_name)
+        first_player_score += traj.rewards[agent_idx]
         total_score += sum(traj.rewards)
     return first_player_score / total_score
     
@@ -97,7 +100,7 @@ def self_play_steps():
 
         # evaluate new model against the previous best one
         new_vs_best_traj = run_games('new_vs_best', step, new_model, best_model, 1000, train=False)
-        new_model_win_rate = first_agent_score(new_vs_best_traj)
+        new_model_win_rate = agent_score("a", new_vs_best_traj)
         print(f'New model win rate vs previous best model: {new_model_win_rate:.3f}')
         if (new_model_win_rate > 0.55):
             best_model = new_model
@@ -152,7 +155,7 @@ def self_play_loop():
 
         # evaluate new model against the previous best one
         new_vs_best_traj = run_games('new_vs_best', step, new_model, best_model, new_model_eval_games, train=False, rotate_agents=True)
-        new_model_win_rate = first_agent_score(new_vs_best_traj)
+        new_model_win_rate = agent_score("a", new_vs_best_traj)
         print(f'New model win rate vs previous best model: {new_model_win_rate:.3f}')
         if (new_model_win_rate > min_win_rate):
             best_model = new_model

@@ -24,6 +24,11 @@ std::pair<double, double> avg_dev(const std::vector<double>& values) {
     return {mean, std::sqrt(variance)};
 }
 
+size_t player_idx(const Trajectory& traj, const std::string& name) {
+    // Finds index of a player with a given name
+    return std::find(traj.agent_names.begin(), traj.agent_names.end(), name) - traj.agent_names.begin();
+}
+
 void splendor_stats(const std::vector<Trajectory>& trajectories) {
     if (trajectories.empty()) {
         return;
@@ -33,6 +38,7 @@ void splendor_stats(const std::vector<Trajectory>& trajectories) {
     std::cout << "Number of games: " << num_games << "\n";
 
     int num_players = trajectories[0].rewards.size();
+    const auto player_names = trajectories[0].agent_names;
     std::vector<double> total_scores(num_players, 0.0);
     std::vector<std::vector<double>> card_counts(num_players); // number of purchased cards for each player
     card_counts.reserve(2);
@@ -40,7 +46,8 @@ void splendor_stats(const std::vector<Trajectory>& trajectories) {
 
     for (const auto& traj : trajectories) {
         for (int player = 0; player < num_players; ++player) {
-            total_scores[player] += traj.rewards[player];
+            size_t idx = player_idx(traj, player_names[player]);
+            total_scores[player] += traj.rewards[idx];
         }
 
         // replay the game to correctly count moves and inspect the final state
@@ -51,7 +58,8 @@ void splendor_stats(const std::vector<Trajectory>& trajectories) {
         auto final_state = std::dynamic_pointer_cast<SplendorGameState>(state);
         game_lengths.push_back(final_state->round);
         for (int player = 0; player < num_players; ++player) {
-            int num_cards = final_state->players[player].card_gems.sum(); 
+            size_t idx = player_idx(traj, player_names[player]);
+            int num_cards = final_state->players[idx].card_gems.sum(); 
             card_counts[player].push_back(num_cards);
         }
     }
@@ -76,7 +84,7 @@ void splendor_stats(const std::vector<Trajectory>& trajectories) {
             "player {}: total score: {:.1f}, mean score: {:.3f}, "
             "score conf interval: {:.3f}, cards mean: {:.1f}, "
             "cards std dev: {:.1f}\n",
-            player,
+            player_names[player],
             total_scores[player],
             win_rate,
             conf_interval,
@@ -96,7 +104,7 @@ void run_model(const json& task_json) {
 
     auto game_state = std::make_shared<SplendorGameState>(num_players);
     int num_moves = std::rand() % 20;
-    auto random_agent = RandomAgent();
+    auto random_agent = RandomAgent("");
     for (int n = 0; n < num_moves; n++) { // makes a few moves to disturb the state
         auto action = random_agent.get_action(game_state);
         game_state->apply_action(action);
