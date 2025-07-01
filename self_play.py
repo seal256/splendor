@@ -1,5 +1,6 @@
 import os, json
 from copy import deepcopy
+from datetime import datetime
 import subprocess
 
 from pysplendor.game import traj_loader
@@ -29,12 +30,13 @@ CONFIG = {
     "verbose": False,
     "save_freqs": True,
     "win_points": 3,
+    "rotate_agents": False,
     "dump_trajectories": ""
 }
 
 BINARY_PATH = "./splendor"
 
-def game_config(model_a_path, model_b_path, traj_path, num_games=1000, train=False):
+def game_config(model_a_path, model_b_path, traj_path, num_games=1000, train=False, rotate_agents=False):
     agent_a = deepcopy(AGENT)
     agent_a["policy"]["model_path"] = model_a_path
     agent_a["train"] = train
@@ -45,14 +47,15 @@ def game_config(model_a_path, model_b_path, traj_path, num_games=1000, train=Fal
     config = deepcopy(CONFIG)
     config["agents"] = [agent_a, agent_b]
     config["num_games"] = num_games
+    config["rotate_agents"] = rotate_agents
     config["dump_trajectories"] = traj_path
     return config
 
-def run_games(name_suffix, step, model_a_path, model_b_path, num_games=1000, train=False, rotate_players=False):
+def run_games(name_suffix, step, model_a_path, model_b_path, num_games=1000, train=False, rotate_agents=False):
     print(f'Running {name_suffix} games step {step}')
 
     traj_path = f'{WORK_DIR}/traj_{name_suffix}_step_{step}.txt'
-    config = game_config(model_a_path, model_b_path, traj_path, num_games, train)
+    config = game_config(model_a_path, model_b_path, traj_path, num_games, train, rotate_agents)
     config_path = f'{WORK_DIR}/{name_suffix}_step_{step}.json'
     json.dump(config, open(config_path, 'wt'))
     subprocess.run([BINARY_PATH, config_path], check=True)
@@ -106,29 +109,30 @@ def self_play_steps():
 
 def self_play_loop():
     # best_model = '/Users/seal/projects/splendor/data/models/random_2_512.pt'
-    best_model = '/Users/seal/projects/splendor/data_1106/model_step_96_best.pt'
-    start_step = 100
+    best_model = '/Users/seal/projects/splendor/data_1906/model_step_9_best.pt'
+    start_step = 12
 
     games_per_update = 5000
     val_fraction = 0.1
     training_iterations = 10 # training_iterations * games_per_update trajectories will be used for each train iteration
-    max_iterations = 200
+    max_iterations = 100
     train_epochs = 1
     new_model_eval_games = 1000
     min_win_rate = 0.55
-    max_iters_without_improvement = 10
+    max_iters_without_improvement = 12
 
     train_dirs = [f'{WORK_DIR}/train_step_{step}' for step in range(start_step)]
     val_dirs = [f'{WORK_DIR}/val_step_{step}' for step in range(start_step)]
     iters_without_improvement = 0
 
     for step in range(start_step, max_iterations):
-        print(f'\n\n---- Iteration {step} ----\n')
+        curr_time = datetime.now().strftime("%d.%m %H:%M:%S")
+        print(f'\n\n### {curr_time} Iteration {step} ###\n')
 
         # run self play sessions with previous best model
         print(f'Collecting {games_per_update} new self play games')
-        val_traj = run_games('val', step, best_model, best_model, games_per_update * val_fraction, train=False)
-        train_traj = run_games('train', step, best_model, best_model, games_per_update, train=True)
+        val_traj = run_games('val', step, best_model, best_model, games_per_update * val_fraction, train=False, rotate_agents=False)
+        train_traj = run_games('train', step, best_model, best_model, games_per_update, train=True, rotate_agents=False)
 
         # preprocess data for model training
         train_dir = f'{WORK_DIR}/train_step_{step}'
@@ -147,7 +151,7 @@ def self_play_loop():
         new_model = model_name_prefix + '_best.pt'
 
         # evaluate new model against the previous best one
-        new_vs_best_traj = run_games('new_vs_best', step, new_model, best_model, new_model_eval_games, train=False)
+        new_vs_best_traj = run_games('new_vs_best', step, new_model, best_model, new_model_eval_games, train=False, rotate_agents=True)
         new_model_win_rate = first_agent_score(new_vs_best_traj)
         print(f'New model win rate vs previous best model: {new_model_win_rate:.3f}')
         if (new_model_win_rate > min_win_rate):
@@ -164,7 +168,7 @@ def self_play_loop():
 
 
 if __name__ == '__main__':
-    WORK_DIR = '/Users/seal/projects/splendor/data_1106'
+    WORK_DIR = '/Users/seal/projects/splendor/data_1906'
     # os.mkdir(WORK_DIR)
     self_play_loop()
     # best_model = '/Users/seal/projects/splendor/data_1405/model_wp3_best.pt'

@@ -10,13 +10,16 @@ Trajectory run_one_game(std::shared_ptr<GameState> game_state,
                        const std::shared_ptr<Agent> random_agent, 
                        bool verbose, 
                        bool save_states, 
-                       bool save_freqs) {
+                       bool save_freqs,
+                       size_t first_player) {
     Trajectory trajectory;
     trajectory.initial_state = game_state->clone();
+    trajectory.first_player = first_player;
 
-    int active_player = game_state->active_player();
+    size_t active_player = game_state->active_player();
+    size_t num_players = agents.size();
     while (!game_state->is_terminal()) {
-        const auto& agent = active_player == CHANCE_PLAYER ? random_agent : agents[active_player];
+        const auto& agent = active_player == CHANCE_PLAYER ? random_agent : agents[(active_player + first_player) % num_players];
         const auto action_info = agent->get_action_info(game_state);
         const int action = action_info.action;
 
@@ -60,6 +63,7 @@ GameSeriesTask::GameSeriesTask(const json& jsn) {
     dump_trajectories = jsn.value("dump_trajectories", "");
     random_seed = jsn.value("random_seed", 11); 
     verbose = jsn.value("verbose", false);
+    rotate_agents = jsn.value("rotate_agents", false);
     save_states = jsn.value("save_states", false); 
     save_freqs = jsn.value("save_freqs", false); 
     for (const auto& player_config : jsn.at("agents")) {
@@ -79,7 +83,8 @@ std::vector<Trajectory> run_games(const GameSeriesTask& task) {
     auto start = std::chrono::high_resolution_clock::now();
     for (int game_num = 0; game_num < task.num_games; ++game_num) {
         auto game_state = std::make_shared<splendor::SplendorGameState>(task.agents.size(), rules);
-        Trajectory trajectory = run_one_game(game_state, task.agents, random_agent, task.verbose, task.save_states, task.save_freqs);
+        size_t first_player = task.rotate_agents ? game_num % task.agents.size() : 0;
+        Trajectory trajectory = run_one_game(game_state, task.agents, random_agent, task.verbose, task.save_states, task.save_freqs, first_player);
         trajectories.push_back(trajectory);
 
         // std::cout << "Game " << game_num << " of " << task.num_games 
@@ -121,6 +126,7 @@ std::vector<Trajectory> run_games_parallel(const GameSeriesTask& task) {
 void to_json(json& j, const Trajectory& traj) {   
     j = {
         {"initial_state", traj.initial_state},
+        {"first_player", traj.first_player},
         {"rewards", traj.rewards},
         {"actions", traj.actions}
     };

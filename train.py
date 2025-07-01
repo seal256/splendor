@@ -213,7 +213,7 @@ def train_loop(model, train_loader, val_loader, optimizer, criterion, device, nu
         train_accuracy = accuracy_score(train_classif_correct, train_classif_pred)
         val_accuracy = accuracy_score(val_classif_correct, val_classif_pred)
 
-        curr_time = datetime.now().strftime("%H:%M:%S")
+        curr_time = datetime.now().strftime("%d.%m %H:%M:%S")
         print(f"{curr_time} Epoch {epoch+1}/{num_epochs}, "
               f"train loss: {train_loss:.4f}, accuracy: {train_accuracy:.4f}, "
               f"val loss: {val_loss:.4f}, accuracy: {val_accuracy:.4f}")
@@ -225,8 +225,6 @@ def train_loop(model, train_loader, val_loader, optimizer, criterion, device, nu
         if val_loss < best_val_loss:
             best_val_loss = val_loss
             save_model(model, model_path + '_best', verbose)
-
-    print("done!")
 
 def train(trained_model_name, train_dir, val_dir, num_epochs=5, load_model_name=None):
     """
@@ -281,7 +279,7 @@ def train(trained_model_name, train_dir, val_dir, num_epochs=5, load_model_name=
     val_data_entropy = data_loss(val_loader, criterion)
     print(f'train data entropy: {train_data_entropy:.4f}, val data entropy: {val_data_entropy:.4f}')
 
-    train_loop(model, train_loader, val_loader, optimizer, criterion, device, num_epochs, model_path=trained_model_name, verbose=False)
+    train_loop(model, train_loader, val_loader, optimizer, criterion, device, num_epochs, model_path=trained_model_name, verbose=True)
     # save_model(model, trained_model_name + '_last', verbose=False)
 
 
