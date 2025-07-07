@@ -24,7 +24,7 @@ private:
     void calculate_vector_lengths();
 public:
     SplendorGameStateEncoder(int num_players);
-    std::vector<float> encode(const std::shared_ptr<GameState> game_state) const override;
+    std::vector<float> encode(std::shared_ptr<const GameState> game_state) const override;
     std::vector<int> gems_to_vec(const GemSet& gems, int max_gems = -1) const;
     std::vector<int> card_to_vec(const Card& card) const;
     std::vector<int> noble_to_vec(const Noble& noble) const;
@@ -40,14 +40,14 @@ private:
     
 public:
     ColectedPointsValue(double score_norm = 15.0);
-    std::vector<double> predict(const std::shared_ptr<GameState> game_state) const override;
+    std::vector<double> predict(std::shared_ptr<const GameState> game_state) const override;
 };
 
 // returns 1 for the player with most win points
 class PointsWinnerValue : public mcts::Value {
 public:
     PointsWinnerValue();
-    std::vector<double> predict(const std::shared_ptr<GameState> game_state) const override;
+    std::vector<double> predict(std::shared_ptr<const GameState> game_state) const override;
 };
 
 };

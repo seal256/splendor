@@ -24,6 +24,6 @@ public:
 
 std::ostream& operator<<(std::ostream& os, const GameState& state);
 void to_json(nlohmann::json& j, const GameState& state);
-void to_json(nlohmann::json& j, const std::shared_ptr<GameState>& state);
+void to_json(nlohmann::json& j, std::shared_ptr<const GameState> state);
 
 constexpr int CHANCE_PLAYER = -1; // Should be returned from GameState::active_player() for chance nodes

@@ -23,8 +23,8 @@ void SplendorGameStateEncoder::calculate_vector_lengths() {
     noble_vec_len_ = noble_to_vec(sample_noble).size();
 }
 
-std::vector<float> SplendorGameStateEncoder::encode(const std::shared_ptr<GameState> game_state) const {
-    auto splendor_state = std::dynamic_pointer_cast<SplendorGameState>(game_state);
+std::vector<float> SplendorGameStateEncoder::encode(std::shared_ptr<const GameState> game_state) const {
+    auto splendor_state = std::dynamic_pointer_cast<const SplendorGameState>(game_state);
     if (!splendor_state) {
         throw std::runtime_error("SplendorGameStateEncoder expects a SplendorGameState");
     }
@@ -133,8 +133,8 @@ std::vector<int> SplendorGameStateEncoder::state_to_vec(const SplendorGameState&
 ColectedPointsValue::ColectedPointsValue(double score_norm) 
     : score_norm_(score_norm) {}
 
-std::vector<double> ColectedPointsValue::predict(const std::shared_ptr<GameState> game_state) const {
-    auto splendor_state = std::dynamic_pointer_cast<SplendorGameState>(game_state);
+std::vector<double> ColectedPointsValue::predict(std::shared_ptr<const GameState> game_state) const {
+    auto splendor_state = std::dynamic_pointer_cast<const SplendorGameState>(game_state);
     if (!splendor_state) {
         throw std::runtime_error("ColectedPointsValue requires SplendorGameState");
     }
@@ -150,8 +150,8 @@ std::vector<double> ColectedPointsValue::predict(const std::shared_ptr<GameState
 
 PointsWinnerValue::PointsWinnerValue() {}
 
-std::vector<double> PointsWinnerValue::predict(const std::shared_ptr<GameState> game_state) const {
-    auto splendor_state = std::dynamic_pointer_cast<SplendorGameState>(game_state);
+std::vector<double> PointsWinnerValue::predict(std::shared_ptr<const GameState> game_state) const {
+    auto splendor_state = std::dynamic_pointer_cast<const SplendorGameState>(game_state);
     if (!splendor_state) {
         throw std::runtime_error("PointsWinnerValue requires SplendorGameState");
     }

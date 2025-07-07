@@ -36,12 +36,12 @@ struct MCTSParams {
 
 class MCTS {
 protected:
-    const std::shared_ptr<GameState> root_state;
+    std::shared_ptr<GameState> root_state;
     std::shared_ptr<Node> root;
     const MCTSParams params;
 
 public:
-    MCTS(const std::shared_ptr<GameState> & state, const MCTSParams & params = MCTSParams());
+    MCTS(std::shared_ptr<const GameState> state, const MCTSParams & params = MCTSParams());
     virtual ~MCTS() = default;
 
     int search();
@@ -51,8 +51,8 @@ public:
     void apply_action(int action);
 
 protected:
-    virtual std::shared_ptr<Node> select_child(const std::shared_ptr<GameState> state, const std::shared_ptr<Node> node);
-    virtual void expand_node(const std::shared_ptr<GameState> state, std::shared_ptr<Node> node);
+    virtual std::shared_ptr<Node> select_child(std::shared_ptr<const GameState> state, std::shared_ptr<const Node> node);
+    virtual void expand_node(std::shared_ptr<const GameState> state, std::shared_ptr<Node> node);
     virtual std::vector<double> rollout(std::shared_ptr<GameState> state);
     virtual std::vector<double> random_rollout(std::shared_ptr<GameState> state);
 };
@@ -60,26 +60,26 @@ protected:
 class Policy {
 public:
     // Returns probabilities of available actions
-    virtual std::vector<double> predict(const std::shared_ptr<GameState> game_state, const std::vector<int>& actions) const = 0;
+    virtual std::vector<double> predict(std::shared_ptr<const GameState> game_state, const std::vector<int>& actions) const = 0;
     virtual ~Policy() = default;
 };
 
 class GameStateEncoder {
 public:
-    virtual std::vector<float> encode(const std::shared_ptr<GameState> game_state) const = 0;
+    virtual std::vector<float> encode(std::shared_ptr<const GameState> game_state) const = 0;
     virtual ~GameStateEncoder() = default;
 };
 
 class PolicyMCTS: public MCTS {
 private:
-    const std::shared_ptr<Policy> policy;
+    std::shared_ptr<const Policy> policy;
     
 public:
-    PolicyMCTS(const std::shared_ptr<GameState>& state, const std::shared_ptr<Policy>& policy, const MCTSParams& params = MCTSParams());
+    PolicyMCTS(std::shared_ptr<const GameState> state, std::shared_ptr<const Policy> policy, const MCTSParams& params = MCTSParams());
 
 protected:
-    std::shared_ptr<Node> select_child(const std::shared_ptr<GameState> state, const std::shared_ptr<Node> node) override;
-    void expand_node(const std::shared_ptr<GameState> state, std::shared_ptr<Node> node) override;
+    std::shared_ptr<Node> select_child(std::shared_ptr<const GameState> state, std::shared_ptr<const Node> node) override;
+    void expand_node(std::shared_ptr<const GameState> state, std::shared_ptr<Node> node) override;
     std::vector<double> rollout(std::shared_ptr<GameState> state) override;
     std::vector<double> ploicy_rollout(std::shared_ptr<GameState> state);
 };
@@ -87,17 +87,17 @@ protected:
 class Value {
 public:
     // Estimates the value of the game_state for each player
-    virtual std::vector<double> predict(const std::shared_ptr<GameState> game_state) const = 0;
+    virtual std::vector<double> predict(std::shared_ptr<const GameState> game_state) const = 0;
     virtual ~Value() = default;
 };
 
 class ValueMCTS : public MCTS {
 private:
-    const std::shared_ptr<Value> value;
+    std::shared_ptr<const Value> value;
     
 public:
-    ValueMCTS(const std::shared_ptr<GameState>& state, 
-            const std::shared_ptr<Value>& value,
+    ValueMCTS(std::shared_ptr<const GameState> state, 
+            std::shared_ptr<const Value> value,
             const MCTSParams& params = MCTSParams());
 
 protected:
@@ -106,18 +106,18 @@ protected:
 
 class PVMCTS : public MCTS {
 private:
-    const std::shared_ptr<Policy> policy;
-    const std::shared_ptr<Value> value;
+    std::shared_ptr<const Policy> policy;
+    std::shared_ptr<const Value> value;
     
 public:
-    PVMCTS(const std::shared_ptr<GameState>& state, 
-           const std::shared_ptr<Policy>& policy,
-           const std::shared_ptr<Value>& value,
+    PVMCTS(std::shared_ptr<const GameState> state, 
+           std::shared_ptr<const Policy> policy,
+           std::shared_ptr<const Value> value,
            const MCTSParams& params = MCTSParams());
 
 protected:
-    std::shared_ptr<Node> select_child(const std::shared_ptr<GameState> state, const std::shared_ptr<Node> node) override;
-    void expand_node(const std::shared_ptr<GameState> state, std::shared_ptr<Node> node) override;    
+    std::shared_ptr<Node> select_child(std::shared_ptr<const GameState> state, std::shared_ptr<const Node> node) override;
+    void expand_node(std::shared_ptr<const GameState> state, std::shared_ptr<Node> node) override;    
     std::vector<double> rollout(std::shared_ptr<GameState> state) override;
     std::vector<double> random_rollout(std::shared_ptr<GameState> state) override;
     std::vector<double> ploicy_rollout(std::shared_ptr<GameState> state);

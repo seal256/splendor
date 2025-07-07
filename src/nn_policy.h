@@ -13,15 +13,15 @@ namespace mcts {
 class NNPolicy : public mcts::Policy {
 private:
     mutable torch::jit::script::Module model;
-    const std::shared_ptr<mcts::GameStateEncoder> state_encoder;
+    std::shared_ptr<const mcts::GameStateEncoder> state_encoder;
     const torch::Device device;
     
 public:
     NNPolicy(const std::string& model_path, 
-             const std::shared_ptr<mcts::GameStateEncoder>& state_encoder,
+             std::shared_ptr<const mcts::GameStateEncoder> state_encoder,
              torch::Device device = torch::kCPU);
     
-    std::vector<double> predict(const std::shared_ptr<GameState> game_state, const std::vector<int>& actions) const override;
+    std::vector<double> predict(std::shared_ptr<const GameState> game_state, const std::vector<int>& actions) const override;
     
     ~NNPolicy() override = default;
 };

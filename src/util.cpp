@@ -55,7 +55,7 @@ void splendor_stats(const std::vector<Trajectory>& trajectories) {
         for (auto action : traj.actions) {
             state->apply_action(action);
         }
-        auto final_state = std::dynamic_pointer_cast<SplendorGameState>(state);
+        auto final_state = std::dynamic_pointer_cast<const SplendorGameState>(state);
         game_lengths.push_back(final_state->round);
         for (int player = 0; player < num_players; ++player) {
             size_t idx = player_idx(traj, player_names[player]);

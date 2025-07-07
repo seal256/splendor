@@ -13,7 +13,7 @@ namespace mcts {
 Node::Node(int action, Node* parent, int acting_player) 
     : action(action), parent(parent), acting_player(acting_player), visits(0), wins(0), p(1.0) {}
 
-MCTS::MCTS(const std::shared_ptr<GameState> & state, const MCTSParams & params)
+MCTS::MCTS(std::shared_ptr<const GameState> state, const MCTSParams & params)
     : root_state(state->clone()), root(std::make_shared<Node>()), params(params) {}
 
 int MCTS::search() {
@@ -75,7 +75,7 @@ int MCTS::best_action() {
         
     } else {
         auto best_child = std::max_element(root->children.begin(), root->children.end(),
-            [](const std::shared_ptr<Node>& a, const std::shared_ptr<Node>& b) {
+            [](const std::shared_ptr<const Node>& a, const std::shared_ptr<const Node>& b) {
                 return a->visits < b->visits;
             });
         return (*best_child)->action;
@@ -95,7 +95,7 @@ void MCTS::apply_action(int action) {
     root_state->apply_action(action);
     
     auto next_node = std::find_if(root->children.begin(), root->children.end(),
-        [&action](const std::shared_ptr<Node>& child) {
+        [&action](const std::shared_ptr<const Node>& child) {
             return child->action == action;
         });
 
@@ -107,7 +107,7 @@ void MCTS::apply_action(int action) {
     }
 }
 
-std::shared_ptr<Node> MCTS::select_child(const std::shared_ptr<GameState> state, const std::shared_ptr<Node> node) {
+std::shared_ptr<Node> MCTS::select_child(std::shared_ptr<const GameState> state, std::shared_ptr<const Node> node) {
     if (state->active_player() == CHANCE_PLAYER) {
         int random_idx = rand() % node->children.size();
         return node->children[random_idx];
@@ -137,7 +137,7 @@ std::shared_ptr<Node> MCTS::select_child(const std::shared_ptr<GameState> state,
     return best_child;
 }
 
-void MCTS::expand_node(const std::shared_ptr<GameState> state, std::shared_ptr<Node> node) {
+void MCTS::expand_node(std::shared_ptr<const GameState> state, std::shared_ptr<Node> node) {
     int acting_player = state->active_player();
     for (const auto& action : state->get_actions()) {
         auto child_node = std::make_shared<Node>(action, node.get(), acting_player);
@@ -164,10 +164,10 @@ std::vector<double> MCTS::random_rollout(std::shared_ptr<GameState> state) {
     return state->rewards();
 }
 
-PolicyMCTS::PolicyMCTS(const std::shared_ptr<GameState>& state, const std::shared_ptr<Policy>& policy, const MCTSParams& params)
+PolicyMCTS::PolicyMCTS(std::shared_ptr<const GameState> state, std::shared_ptr<const Policy> policy, const MCTSParams& params)
     : MCTS(state, params), policy(policy) {}
 
-std::shared_ptr<Node> PolicyMCTS::select_child(const std::shared_ptr<GameState> state, const std::shared_ptr<Node> node) {
+std::shared_ptr<Node> PolicyMCTS::select_child(std::shared_ptr<const GameState> state, std::shared_ptr<const Node> node) {
     if (state->active_player() == CHANCE_PLAYER) {
         int random_idx = rand() % node->children.size();
         return node->children[random_idx];
@@ -191,7 +191,7 @@ std::shared_ptr<Node> PolicyMCTS::select_child(const std::shared_ptr<GameState> 
     return best_child;
 }
 
-void PolicyMCTS::expand_node(const std::shared_ptr<GameState> state, std::shared_ptr<Node> node) {
+void PolicyMCTS::expand_node(std::shared_ptr<const GameState> state, std::shared_ptr<Node> node) {
     const std::vector<int> actions = state->get_actions(); 
     int acting_player = state->active_player();
     bool use_policy = acting_player != CHANCE_PLAYER && this->params.use_selection_policy;
@@ -238,7 +238,7 @@ std::vector<double> PolicyMCTS::ploicy_rollout(std::shared_ptr<GameState> state)
     return state->rewards();
 }
 
-ValueMCTS::ValueMCTS(const std::shared_ptr<GameState>& state, const std::shared_ptr<Value>& value, const MCTSParams& params)
+ValueMCTS::ValueMCTS(std::shared_ptr<const GameState> state, std::shared_ptr<const Value> value, const MCTSParams& params)
     : MCTS(state, params), value(value) {}
 
 std::vector<double> ValueMCTS::rollout(std::shared_ptr<GameState> state) {
@@ -255,13 +255,13 @@ std::vector<double> ValueMCTS::rollout(std::shared_ptr<GameState> state) {
     return rewards;
 }
 
-PVMCTS::PVMCTS(const std::shared_ptr<GameState>& state, 
-       const std::shared_ptr<Policy>& policy,
-       const std::shared_ptr<Value>& value,
+PVMCTS::PVMCTS(std::shared_ptr<const GameState> state, 
+       std::shared_ptr<const Policy> policy,
+       std::shared_ptr<const Value> value,
        const MCTSParams& params)
     : MCTS(state, params), policy(policy), value(value) {}
 
-std::shared_ptr<Node> PVMCTS::select_child(const std::shared_ptr<GameState> state, const std::shared_ptr<Node> node) {
+std::shared_ptr<Node> PVMCTS::select_child(std::shared_ptr<const GameState> state, std::shared_ptr<const Node> node) {
     if (state->active_player() == CHANCE_PLAYER) {
         int random_idx = rand() % node->children.size();
         return node->children[random_idx];
@@ -285,7 +285,7 @@ std::shared_ptr<Node> PVMCTS::select_child(const std::shared_ptr<GameState> stat
     return best_child;
 }
 
-void PVMCTS::expand_node(const std::shared_ptr<GameState> state, std::shared_ptr<Node> node) {
+void PVMCTS::expand_node(std::shared_ptr<const GameState> state, std::shared_ptr<Node> node) {
     const std::vector<int> actions = state->get_actions(); 
     int acting_player = state->active_player();
     bool use_policy = acting_player != CHANCE_PLAYER && this->params.use_selection_policy;

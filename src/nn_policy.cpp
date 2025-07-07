@@ -5,7 +5,7 @@
 namespace mcts {
 
 NNPolicy::NNPolicy(const std::string& model_path, 
-                   const std::shared_ptr<mcts::GameStateEncoder>& state_encoder,
+                   std::shared_ptr<const mcts::GameStateEncoder> state_encoder,
                    torch::Device device)
     : state_encoder(state_encoder), device(device) {
     try {
@@ -17,7 +17,7 @@ NNPolicy::NNPolicy(const std::string& model_path,
     }
 }
 
-std::vector<double> NNPolicy::predict(const std::shared_ptr<GameState> game_state, const std::vector<int>& actions) const {       
+std::vector<double> NNPolicy::predict(std::shared_ptr<const GameState> game_state, const std::vector<int>& actions) const {       
     std::vector<float> state_vec = state_encoder->encode(game_state);
     
     torch::Tensor input_tensor = torch::from_blob(

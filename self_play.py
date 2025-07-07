@@ -29,7 +29,7 @@ CONFIG = {
     "num_workers": 9,
     "verbose": False,
     "save_freqs": True,
-    "win_points": 3,
+    "win_points": 5,
     "rotate_agents": False,
     "dump_trajectories": ""
 }
@@ -111,9 +111,9 @@ def self_play_steps():
             break
 
 def self_play_loop():
-    best_model = '/Users/seal/projects/splendor/data/models/random_2_512.pt'
-    # best_model = f'{WORK_DIR}/model_step_14_best.pt'
-    start_step = 0
+    # best_model = '/Users/seal/projects/splendor/data/models/random_2_512.pt'
+    best_model = f'{WORK_DIR}/model_step_9_best.pt'
+    start_step = 10
 
     games_per_update = 5000
     val_fraction = 0.1
@@ -171,7 +171,7 @@ def self_play_loop():
 
 
 if __name__ == '__main__':
-    WORK_DIR = '/Users/seal/projects/splendor/data_0107b'
+    WORK_DIR = '/Users/seal/projects/splendor/data_0207_wp5'
     # os.mkdir(WORK_DIR)
     self_play_loop()
     # best_model = '/Users/seal/projects/splendor/data_1405/model_wp3_best.pt'

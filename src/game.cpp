@@ -7,7 +7,7 @@
 
 Trajectory run_one_game(std::shared_ptr<GameState> game_state, 
                        const std::vector<std::shared_ptr<Agent>>& agents, 
-                       const std::shared_ptr<Agent> random_agent, 
+                       std::shared_ptr<const Agent> random_agent, 
                        bool verbose, 
                        bool save_states, 
                        bool save_freqs) {
@@ -63,7 +63,7 @@ GameSeriesTask::GameSeriesTask(const json& jsn) {
     num_games = jsn.at("num_games");
     num_workers = jsn.value("num_workers", 1);
     dump_trajectories = jsn.value("dump_trajectories", "");
-    random_seed = jsn.value("random_seed", 11); 
+    random_seed = jsn.value("random_seed", 0);
     verbose = jsn.value("verbose", false);
     rotate_agents = jsn.value("rotate_agents", false);
     save_states = jsn.value("save_states", false); 
@@ -131,9 +131,7 @@ std::vector<Trajectory> run_games_parallel(const GameSeriesTask& task) {
     }
     for (auto& future : futures) {
         auto worker_trajectories = future.get();
-        all_trajectories.insert(all_trajectories.end(), 
-                               worker_trajectories.begin(), 
-                               worker_trajectories.end());
+        all_trajectories.insert(all_trajectories.end(), worker_trajectories.begin(), worker_trajectories.end());
     }
 
     return all_trajectories;
