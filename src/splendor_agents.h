@@ -6,7 +6,7 @@
 
 #include "json.hpp"
 
-
+// Creates an agent instance from a json configuration
 std::shared_ptr<Agent> construct_agent(const nlohmann::json& jsn);
 
 namespace splendor {
@@ -22,14 +22,19 @@ private:
     size_t noble_vec_len_;
 
     void calculate_vector_lengths();
+
 public:
     SplendorGameStateEncoder(int num_players);
     std::vector<float> encode(std::shared_ptr<const GameState> game_state) const override;
+
+    // Encodes state into a 0,1 vector
+    std::vector<int> state_to_vec(const SplendorGameState& state) const;
+
+private:
     std::vector<int> gems_to_vec(const GemSet& gems, int max_gems = -1) const;
     std::vector<int> card_to_vec(const Card& card) const;
     std::vector<int> noble_to_vec(const Noble& noble) const;
     std::vector<int> player_to_vec(const SplendorPlayerState& player) const;
-    std::vector<int> state_to_vec(const SplendorGameState& state) const;
     
 };
 

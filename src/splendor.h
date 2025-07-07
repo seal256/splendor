@@ -75,7 +75,7 @@ enum class ActionType {
  
 struct Action {
     ActionType type;
-    GemSet gems; // gems to take
+    GemSet gems;      // gems to take
     int level = -1;   // card level (for reserve, purchase, new_table_card)
     int pos = -1;     // position of the card to take
 
@@ -112,6 +112,7 @@ struct SplendorGameRules {
 
 extern const std::unordered_map<size_t, std::shared_ptr<const SplendorGameRules>> DEFAULT_RULES;
 
+// Errors that might happen when applying an action that violates some game rules
 enum class ActionError {
     NONE,
     INVALID_ACTION_ID,
@@ -142,7 +143,7 @@ public:
     std::vector<const Noble*> nobles;               
     std::vector<std::vector<const Card*>> decks;
     std::vector<std::vector<const Card*>> cards;
-    GemSet gems;
+    GemSet gems;               // Gems present on the game table
     std::vector<SplendorPlayerState> players;
 
 public:

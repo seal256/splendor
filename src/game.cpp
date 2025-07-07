@@ -15,7 +15,7 @@ Trajectory run_one_game(std::shared_ptr<GameState> game_state,
     trajectory.initial_state = game_state->clone();
     trajectory.agent_names.reserve(agents.size());
     for (const auto& agent : agents) {
-        trajectory.agent_names.push_back(agent->name); // that's unnecessary copying, but Trajectory is fat anyway
+        trajectory.agent_names.push_back(agent->name); // TODO: that's unnecessary copying, but Trajectory is fat anyway
     }
 
     size_t active_player = game_state->active_player();

@@ -24,6 +24,7 @@ int MCTS::search() {
 }
 
 void MCTS::search_iteration() {
+    // 1. Selection
     auto node = root;
     auto state = root_state->clone();
     while (!node->children.empty() && node->visits > 0) {
@@ -31,6 +32,7 @@ void MCTS::search_iteration() {
         state->apply_action(node->action);
     }
 
+    // 2. Expansion
     if (!state->is_terminal() && node->children.empty() && node->visits > 0) {
         this->expand_node(state, node);
         if (!node->children.empty()) {
@@ -39,8 +41,10 @@ void MCTS::search_iteration() {
         }
     }
 
+    // 3. Simulation
     std::vector<double> rewards = this->rollout(state);
 
+    // 4. Backpropagation
     Node * bp_node = node.get();
     while (bp_node) {
         bp_node->visits++;
@@ -218,10 +222,10 @@ void PolicyMCTS::expand_node(std::shared_ptr<const GameState> state, std::shared
 }
 
 std::vector<double> PolicyMCTS::rollout(std::shared_ptr<GameState> state) {
-    return this->params.use_rollout_policy ? this->ploicy_rollout(state) : this->random_rollout(state);
+    return this->params.use_rollout_policy ? this->policy_rollout(state) : this->random_rollout(state);
 }
 
-std::vector<double> PolicyMCTS::ploicy_rollout(std::shared_ptr<GameState> state) {
+std::vector<double> PolicyMCTS::policy_rollout(std::shared_ptr<GameState> state) {
     while (!state->is_terminal()) {
         auto actions = state->get_actions();
         if (actions.empty()) 
@@ -306,7 +310,7 @@ void PVMCTS::expand_node(std::shared_ptr<const GameState> state, std::shared_ptr
 
 std::vector<double> PVMCTS::rollout(std::shared_ptr<GameState> state) {
     std::vector<double> predicted_values = value->predict(state);
-    std::vector<double> rewards = this->params.use_rollout_policy ? this->ploicy_rollout(state) : this->random_rollout(state);
+    std::vector<double> rewards = this->params.use_rollout_policy ? this->policy_rollout(state) : this->random_rollout(state);
     
     if (!state->is_terminal()) {
         double wv = this->params.value_weight;
@@ -333,7 +337,7 @@ std::vector<double> PVMCTS::random_rollout(std::shared_ptr<GameState> state) {
     }
 }
 
-std::vector<double> PVMCTS::ploicy_rollout(std::shared_ptr<GameState> state) {
+std::vector<double> PVMCTS::policy_rollout(std::shared_ptr<GameState> state) {
     for (int t = 0; t < this->params.max_rollout_len && !state->is_terminal(); t++) {
         auto actions = state->get_actions();
         if (actions.empty()) 

@@ -43,6 +43,8 @@ public:
     ActionInfo get_action_info(std::shared_ptr<const GameState> game_state) const override;
 };
 
+// Selects actions wiht probabilities proportional to probs vector.
+// probs may be of size num_actions * max_round. This is interpreted as stacked move probability vectors wrt game round number.
 class ConstantPolicy : public mcts::Policy {
     const std::vector<double> probs;
     const int num_actions;
