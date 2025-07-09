@@ -1,4 +1,122 @@
-# Splendor
+# MCTS embedded neural netwok strategy for Splendor table game trained with self play
 
-Run tests with `pytest --tb=long tests`
+## Table of Contents
+- [Key Features](#key-features)
+- [Experimental Results](#experimental-results)
+- [Repository Structure](#repository-structure)
+- [Requirements](#requirements)
+- [Usage](#usage)
+- [Implementation Details](#implementation-details)
+- [References](#references)
 
+## Key Features
+
+- Splendor game logic and MCTS implemented in Python and C++
+- Minimalistic console interface for the game play
+- MCTS algorithm with chance node support + embedded neural network
+- Action selection policy trained with PyTorch from self play
+- Games are collected with a fast C++ binary, while neural network training is performed in Python
+- Multicore game execution and 'mps' Torch backed
+
+## Experimental Results
+
+### Player level estimation
+
+Player's Elo rating $R$ is related to win rate $w$ against opponent with rating $R_{\text{opp}}$ by the equation
+$$
+w = \frac{1}{1 + 10^{(R_{\text{opp}} - R)/400}}
+$$
+
+For Splendor it is hard to find an AI model with confirmed rating. 
+An analysis of human games played on an open game platform Spendee is present on their [forum](https://spendee.mattle.online/lobby/forum/topic/mzXQmzjCBmyC56Dgx/splendor-strategy-data-analysis-part-1). Distributions of some game parameters, such as the number of acquired cards, nobles and game length with respect to player rating are reported. Using the correlation between average number of acquired cards and human player rating, we can indirectly estimate the rating of the model. We can loosely assume that the average number of cards purchased by the model is proportional to model's Elo rating. 
+
+![Ratings vs Cards](assets/rating_vs_cards.png)
+
+### Baselines
+
+I report few baselines for 2 player Splendor setup. Strengths of the baselines are approximately transformed to Elo ratings using purchased cards statistics and the equation from the figure above. 
+
+I found out that the most significant increase in game strngth for MCTS based agents comes from limiting chance nodes children size to 1. Chance nodes correspond to new card draw from the deck after a card purchase. The normal branching factor in the MCTS tree is about 10, while chance nodes have branching factor of 30. 
+
+I didn't find it helpful to train state value function. The accuracy of the value fit was low, and additional noise in Node values only worsened performance. In all current experiments only move selection Policy is used to restrict MCTS search tree and make it deeper. 
+
+Increase in the number of MCTS rollouts boosts the performance only slightly, due to large branching factor. In my experience, MCTS gains most from pruning the search tree, increasing it effective depth, and allowing it to reach high value and low variance terminal game states.  
+
+On the RL part, the quality of the training data is essential to make an improvement in performance by adding a policy component to MCTS. 
+
+
+### Limited game self play
+
+I'm currently unable to get a model with an expert human level through self play. Stable training is only achieved for a restricted game rules. For example, when the number of points to win the game is set to 5, self train procedure succesfully learns starting from a random policy model. The resulting model beats MCTS baselines, but still struggles to confidentely win against an experienced human player. 
+
+![Self paly](assets/elo_wrt_mcts_wp5.png)
+
+Error bars on the figure show 99% confidence interval. For the reference, MCTS is stronger than random player by approximately 750 Elo points (in the win points 5 setup).
+
+![Cards](assets/cards_wp5.png)
+
+Error bars on the figure show one standart deviation. Results for the restricted game setup cannot be correlated to human Elo ratings
+
+
+## Repository Structure
+
+```
+project-root/
+│
+├── pysplendor/           # Python implementation of Splendor game logic and MCTS
+├── src/                  # C++ source files
+├── tests/                # Check mutual consistency of the C++ and Python implementations 
+├── build.sh              # A script to build C++ splendor binary
+├── play.py               # Allows human to play with a trained model in console
+├── prepare_data.py       # Converts trajectory dumps into features
+├── train.py              # Trains policy model
+├── self_play.py          # Runs self play -- train loop
+```
+
+## Requirements
+
+- Python 3.10
+- PyTorch 2.6.0
+- libtorch
+- clang
+- cmake
+
+### Libtorch installation
+
+Torch Script is used to serialise the model in Python and execute it in C++. Follow the [instructions](https://docs.pytorch.org/tutorials/advanced/cpp_export.html#depending-on-libtorch-and-building-the-application) to download the latest library version [here](https://pytorch.org/). In the `CMakeLists.txt` file the line `set(CMAKE_PREFIX_PATH "/usr/local/libtorch")` defines the path to the unpacked libtorch folder. 
+
+On MacOS you might also need to install libomp
+```
+brew install libomp
+```
+and allow access to the dylibs with 
+```
+sudo xattr -r -d com.apple.quarantine /usr/local/libtorch/lib/libomp.dylib
+```
+
+## Usage
+
+### Build the binary
+
+Build C++ binary using `bild.sh` script. This will assemble the binary and copy it to the root folder. `Release` build mode is default. Execute `build.sh Debug` for debug binary version.  
+
+### Run the binary
+
+```
+splndor sample_task.json
+```
+
+### Play against a trained model
+
+### Run self play training loop
+
+### Tests
+
+Tests ensure mutual consistency between Python and C++ game logic and feature computation. Run with `pytest --tb=long tests`
+
+## Implementation Details
+
+
+## References
+
+[^spendee_forum] 

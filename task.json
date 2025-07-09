@@ -1,32 +1,17 @@
 {
     "agents": [
         {
-            "type": "PolicyMCTSAgent",
-            "name": "a",
-            "iterations": 500,
-            "max_choice_children": 1,
-            "weighted_selection_moves":10,
-            "p_noise_level":0.1,
-            "train":false,
-            "policy" : {
-                "type" : "NNPolicy",
-                "model_path": "/Users/seal/projects/splendor/data_0107/model_step_9_best.pt",
-                "num_players": 2
-            }
+            "type": "RandomAgent",
+            "name": "a"
         },
         {
-            "type": "PolicyMCTSAgent",
+            "type": "MCTSAgent",
             "name": "b",
             "iterations": 500,
             "max_choice_children": 1,
             "weighted_selection_moves":10,
             "p_noise_level":0.1,
-            "train":false,
-            "policy" : {
-                "type" : "NNPolicy",
-                "model_path": "/Users/seal/projects/splendor/data/models/random_2_512.pt",
-                "num_players": 2
-            }
+            "train":false
         }
     ],
     "rotate_agents": true,
@@ -34,6 +19,6 @@
     "num_workers": 10,
     "verbose": false,
     "save_freqs": true,
-    "win_points": 3,
-    "dump_trajectories": "data_0107/traj_new_vs_best_step_9.txt"
+    "win_points": 5,
+    "dump_trajectories": "data_0207_wp5/mcts_vs_random.txt"
 }

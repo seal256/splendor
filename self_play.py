@@ -7,7 +7,7 @@ from pysplendor.game import traj_loader
 from train import train
 from prepare_data import prepare_data
 
-AGENT = {
+POLICY_AGENT = {
             "type": "PolicyMCTSAgent",
             "iterations": 500,
             "exploration": 1.4,
@@ -23,6 +23,15 @@ AGENT = {
             }
         }
 
+MCTS_AGENT = {
+            "type": "MCTSAgent",
+            "iterations": 500,
+            "exploration": 1.4,
+            "max_choice_children": 1,
+            "train":False,
+        }
+
+
 CONFIG = {
     "agents": [],
     "num_games": 10000,
@@ -36,15 +45,33 @@ CONFIG = {
 
 BINARY_PATH = "./splendor"
 
+def model_agent(model_path, name, train=False):
+    agent = deepcopy(POLICY_AGENT)
+    agent["policy"]["model_path"] = model_path
+    agent["train"] = train
+    agent["name"] = name    
+    return agent
+
+def mcts_agent(name, train=False):
+    agent = deepcopy(MCTS_AGENT)
+    agent["train"] = train
+    agent["name"] = name    
+    return agent
+
 def game_config(model_a_path, model_b_path, traj_path, num_games=1000, train=False, rotate_agents=False):
-    agent_a = deepcopy(AGENT)
-    agent_a["policy"]["model_path"] = model_a_path
-    agent_a["train"] = train
-    agent_a["name"] = "a"
-    agent_b = deepcopy(AGENT)
-    agent_b["policy"]["model_path"] = model_b_path
-    agent_b["train"] = train
-    agent_b["name"] = "b"
+    agent_a = model_agent(model_a_path, "a", train)
+    agent_b = model_agent(model_b_path, "b", train)
+
+    config = deepcopy(CONFIG)
+    config["agents"] = [agent_a, agent_b]
+    config["num_games"] = num_games
+    config["rotate_agents"] = rotate_agents
+    config["dump_trajectories"] = traj_path
+    return config
+
+def game_against_mcts_config(model_a_path, traj_path, num_games=1000, train=False, rotate_agents=False):
+    agent_a = model_agent(model_a_path, "a", train)
+    agent_b = mcts_agent("b", train)
 
     config = deepcopy(CONFIG)
     config["agents"] = [agent_a, agent_b]
@@ -58,6 +85,17 @@ def run_games(name_suffix, step, model_a_path, model_b_path, num_games=1000, tra
 
     traj_path = f'{WORK_DIR}/traj_{name_suffix}_step_{step}.txt'
     config = game_config(model_a_path, model_b_path, traj_path, num_games, train, rotate_agents)
+    config_path = f'{WORK_DIR}/{name_suffix}_step_{step}.json'
+    json.dump(config, open(config_path, 'wt'))
+    subprocess.run([BINARY_PATH, config_path], check=True)
+
+    return traj_path # path to resulting trajectories
+
+def run_games_against_mcts(name_suffix, step, model_a_path, num_games=1000, train=False, rotate_agents=False):
+    print(f'Running {name_suffix} games step {step}')
+
+    traj_path = f'{WORK_DIR}/traj_{name_suffix}_step_{step}.txt'
+    config = game_against_mcts_config(model_a_path, traj_path, num_games, train, rotate_agents)
     config_path = f'{WORK_DIR}/{name_suffix}_step_{step}.json'
     json.dump(config, open(config_path, 'wt'))
     subprocess.run([BINARY_PATH, config_path], check=True)
@@ -169,11 +207,130 @@ def self_play_loop():
                 print('Stopping')
                 break
 
+def rate_against_baseline():
+    steps = []
+    win_rates = []
+    for step in range(21, 80):
+        model_name = f'{WORK_DIR}/model_step_{step}_best.pt'
+        trained_vs_mcts_traj = run_games_against_mcts('trained_vs_mcts', step, model_name, 1000, train=False, rotate_agents=True)
+        model_win_rate = agent_score("a", trained_vs_mcts_traj)
+        # print(step, model_win_rate)
+
+        steps.append(step)
+        win_rates.append(model_win_rate)
+
+    print(steps)
+    print(win_rates)
+
+from math import log10
+def win_rate_to_elo_rating(win_rate, ref_rating = 0):
+    rating = ref_rating - 400 * log10(1 / win_rate - 1)
+    return rating
+
+
+
+from dataclasses import dataclass
+import re
+from typing import List
+
+@dataclass
+class JobReport:
+    step: int
+    player_a_score: float
+    player_a_conf: float
+    player_a_cards_mean: float
+    player_a_cards_std: float
+    game_length_avg: float
+    game_length_std: float
+
+def parse_job_report(file_path: str) -> List[JobReport]:
+    with open(file_path, 'r') as file:
+        content = file.read()
+    
+    reports = re.split(r'(?=\nseed:)', content.strip())
+    results = []
+    
+    for report in reports:
+        if not report.strip():
+            continue
+            
+        # Extract player a stats
+        player_a_match = re.search(
+            r'player a: total score: [\d.]+,\s*mean score: ([\d.]+),\s*score conf interval: ([\d.]+),\s*cards mean: ([\d.]+),\s*cards std dev: ([\d.]+)',
+            report
+        )
+        # Extract game length stats
+        game_length_match = re.search(
+            r'game length avg: ([\d.]+),\s*std dev: ([\d.]+)',
+            report
+        )
+        # Extract step number
+        step_match = re.search(
+            r'traj_trained_vs_mcts_step_(\d+)\.txt',
+            report
+        )
+        
+        if all([player_a_match, game_length_match, step_match]):
+            results.append(JobReport(
+                step=int(step_match.group(1)),
+                player_a_score=float(player_a_match.group(1)),
+                player_a_conf=float(player_a_match.group(2)),
+                player_a_cards_mean=float(player_a_match.group(3)),
+                player_a_cards_std=float(player_a_match.group(4)),
+                game_length_avg=float(game_length_match.group(1)),
+                game_length_std=float(game_length_match.group(2))
+            ))
+    
+    return results
+
+import matplotlib.pyplot as plt
+def plot_winrates():
+    # random_vs_mcts_win_rate = 0.014 # Win rate of random player vs MCTS
+    # base = win_rate_to_elo_rating(0.014) # Assuming random player has Elo rating 0
+
+    resutls = parse_job_report('rate_report.txt')
+    steps = [d.step for d in resutls]
+    win_rates = [d.player_a_score for d in resutls]
+    elos = [win_rate_to_elo_rating(w) for w in win_rates]
+    err_bars = [d.player_a_conf for d in resutls]
+    erros_elo_up = [win_rate_to_elo_rating(w + e) - win_rate_to_elo_rating(w) for w, e in zip(win_rates, err_bars)]
+    erros_elo_down = [-win_rate_to_elo_rating(w - e) + win_rate_to_elo_rating(w) for w, e in zip(win_rates, err_bars)]
+    # plt.plot(steps, win_rates, '-b')
+    plt.errorbar(steps, elos, yerr=[erros_elo_down, erros_elo_up], fmt='-o', label='MCTS + action selection policy')
+    plt.plot([steps[0], steps[-1]], [0, 0], '-k', label='MCTS')
+
+    plt.xlabel('training step')
+    # plt.ylabel('win rate')
+    plt.ylabel('Elo rating wrt MCTS')
+    plt.title('win points 5')
+    plt.legend()
+    plt.show()
+
+def plot_cards():
+    resutls = parse_job_report('rate_report.txt')
+    steps = [d.step for d in resutls]
+    cards = [d.player_a_cards_mean for d in resutls]
+    err_bars = [d.player_a_cards_std for d in resutls]
+    plt.errorbar(steps, cards, yerr=err_bars, fmt='-o', label='Purchased cards')
+    
+    plt.xlabel('training step')
+    plt.ylabel('Cards')
+    plt.title('win points 5')
+    plt.legend()
+    plt.show()
 
 if __name__ == '__main__':
     WORK_DIR = '/Users/seal/projects/splendor/data_0207_wp5'
     # os.mkdir(WORK_DIR)
-    self_play_loop()
+    # self_play_loop()
+    # rate_against_baseline()
+    # plot_winrates()
+    # plot_cards()
+
+    random_vs_mcts_win_rate = 0.014 # Win rate of random player vs MCTS
+    base = win_rate_to_elo_rating(0.014) # Assuming random player has Elo rating 0
+    print(base)
+
     # best_model = '/Users/seal/projects/splendor/data_1405/model_wp3_best.pt'
     # run_games('val', 0, best_model, best_model, 100, train=False)
 

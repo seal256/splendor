@@ -31,19 +31,6 @@ class NNPolicy(Policy):
         action_probs = [probs[a] for a in game_state.get_actions()]
         return action_probs
 
-class AccumValue(Value):
-    def __init__(self):
-        super().__init__()
-        # self.gamma = gamma
-        self.score_norm = 15.0
-
-    def predict(self, game_state: SplendorGameState):
-        '''Returns accumulated reward up to the point'''
-        # n = game_state.move_num()
-        values = [player.points / self.score_norm for player in game_state.players]
-        return values
-
-
 class PolicyMCTSAgent(Agent):
     def __init__(self, policy, mcts_params):
         self.policy = policy
