@@ -108,6 +108,39 @@ splndor sample_task.json
 
 ### Play against a trained model
 
+```
+python play.py -m ./workdir/model.pt
+```
+
+The console game interface shows:
+
+- Game table and player's states. The game uses single-letter color encodings: r (ruby/red), g (emerald/green), b (diamond/blue), w (pearl/white), k (sapphire/black), and y (gold/yellow joker).
+
+- Available nobles with their requirements (e.g. `[3|r3g3k3]` means 3 points for 3 rubies, 3 emeralds and 3 sapphires)
+
+- Development cards grouped by level (0-2), showing their cost and reward (e.g. `[k0|r1g1b2w1]` is a level 0 sapphire card costing 1 ruby, 1 emerald, 2 diamonds and 1 pearl)
+
+- Available gem tokens on the table
+
+- Each player's current points, collected card bonuses, gem tokens, and reserved cards in hand
+
+```
+round: 4 player to move: 1
+nobles: [3|r3g3k3] [3|r3g3b3] [3|b4w4]
+2: [g5|g3b7] [k4|r7] [k3|r3g5b3w3] [g3|r3b3w5k3]
+1: [k2|r3g5] [b2|b3w5] [g3|g6] [k1|g2b2w3]
+0: [k0|r1g1b2w1] [b0|r1g1w1k1] [b0|k3] [r0|g1w2k2]
+gems: b4w1k3y3
+player 0 | points: 0
+card gems: 
+gems: r3g3w3y2
+hand: [w2|r4g1k2] [w2|r5k3]
+player 1 | points: 0
+card gems: w1
+gems: r1g1k1
+hand: [w3|w6]
+```
+
 ### Run self play training loop
 
 ### Tests

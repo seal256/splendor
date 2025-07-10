@@ -1,15 +1,22 @@
 import random
+import torch
 
 from .game_state import GameState, Agent
-from .splendor import SplendorGameState, SplendorPlayerState, GOLD_GEM, Action, ActionType, ACTION_IDS, ACTIONS_STR
-from .mcts import MCTS
+from .splendor import ACTION_IDS, ACTIONS_STR
+from .mcts import MCTS, Policy, PolicyMCTS
 
 class RandomAgent(Agent):
+    def __init__(self, name: str = 'random'):
+        super().__init__(name)
+
     def get_action(self, game_state: GameState):
         legal_actions = game_state.get_actions()
         return random.choice(legal_actions)
 
 class HumanPlayer(Agent):
+    def __init__(self, name: str = 'human'):
+        super().__init__(name)
+    
     def get_action(self, game_state):
         valid_actions = [ACTIONS_STR[id] for id in game_state.get_actions()]
         print(f'Valid moves: {",".join(valid_actions)}')
@@ -23,6 +30,9 @@ class HumanPlayer(Agent):
                 return ACTION_IDS[action_str]
 
 class MCTSAgent(Agent):
+    def __init__(self, name: str = 'mcts'):
+        super().__init__(name)
+    
     def __init__(self, mcts_params = None):
         self.mcts_params = mcts_params
 
@@ -31,36 +41,42 @@ class MCTSAgent(Agent):
         action = mcts.search()
         return action
 
-# class CultivatorPlayer:
-#     def get_action(self, game_state: SplendorGameState):
-#         player = game_state.players[game_state.player_to_move]
-#         gold = player.gems.get(GOLD_GEM)
+class ConstantPolicy(Policy):
+    def __init__(self, probs):
+        self.probs = probs
 
-#         action_scores = []
-        
-#         for level, cards in enumerate(game_state.cards):
-#             for pos, card in enumerate(cards):
-#                 shortage = player.gems.shortage(card.price)
-#                 gold_shortage = shortage.count() - gold
-#                 if gold_shortage <= 0: # affordable card
-#                     action = Action(ActionType.purchase, level=level, pos=pos)
-#                     score = card.points
-#                     action_scores.append((score, action))
-#                 else: 
-#                     gems = list(shortage.gems.keys())
+    def predict(self, game_state: GameState):
+        action_probs = [self.probs[a] for a in game_state.get_actions()]
+        return action_probs
 
-#                     if len(gems) > 3:
-#                         gems = gems[:3]
-#                     if len(gems) == 1 and shortage.get(gems[0]) > 1:
-#                         gems = [gems[0], gems[0]]
-#                     action = Action(ActionType.take, gems=gems)
-#                     score = -gold_shortage
-#                     if card.points > 0 and gold_shortage < 3:
-#                         score += card.points + 1
-#                     action_scores.append((score, action))
+class NNPolicy(Policy):
+    def __init__(self, model, state_encoder):
+        self.model = model
+        self.state_encoder = state_encoder
 
-#         _, best_action = sorted(action_scores, reverse=True, key = lambda x: x[0])[0]
-#         return best_action
+    def predict(self, game_state: GameState):
+        state_vec = self.state_encoder.state_to_vec(game_state)
+        X = torch.tensor(state_vec, dtype=torch.float32)
+        probs = self.model.forward(X).detach().numpy()
+        action_probs = [probs[a] for a in game_state.get_actions()]
+        return action_probs
+
+class PolicyMCTSAgent(Agent):
+    def __init__(self, policy, mcts_params, name: str = 'policy'):
+        super().__init__(name)
+        self.policy = policy
+        self.mcts_params = mcts_params
+
+    def get_action(self, game_state: GameState):
+        mcts = PolicyMCTS(game_state, self.policy, self.mcts_params)
+        action = mcts.search()
+        return action
+
+def load_mlp_model(model_path):
+    model = torch.jit.load(model_path, map_location=torch.device('cpu'))
+    model.eval()
+
+    return model
 
 
 

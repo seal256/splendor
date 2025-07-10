@@ -33,7 +33,8 @@ def traj_loader(file_name):
 
 
 def run_one_game(game_state, agents, verbose=False, save_states=False):
-    trajectory = Trajectory(game_state.copy(), [], [])
+    names = [a.name for a in agents]
+    trajectory = Trajectory(game_state.copy(), names, [], [])
 
     active_player = game_state.active_player()
     while not game_state.is_terminal():

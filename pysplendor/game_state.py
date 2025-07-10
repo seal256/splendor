@@ -40,6 +40,9 @@ class GameState(ABC):
 class Agent(ABC):
     '''Game player'''
 
+    def __init__(self, name: str = None):
+        self.name = name
+
     @abstractmethod
     def get_action(game_state: GameState):
         pass
