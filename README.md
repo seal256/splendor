@@ -1,8 +1,9 @@
-# MCTS with policy netwok strategy for Splendor table game
+# MCTS with policy netwok for Splendor table game
 
-Wide and shallow or thick and toll? This is the question that is on the mind of every Splendor player around the world. They are thinking about their card stack of course. AI model could give us a decisive answer if trained in an AlphaZero style. This repo is moving towards obtaining a pure self play solution for Splendor.
+Wide and shallow or thick and toll? This is the question that is on the mind of every Splendor player around the world. They are thinking about their card stacks of course. AI model could give us an answer if trained in an AlphaZero style. This repo is moving towards obtaining a pure "self play from scratch" solution for Splendor.
 
 ## Table of Contents
+
 - [Key Features](#key-features)
 - [Experimental Results](#experimental-results)
 - [Repository Structure](#repository-structure)
@@ -71,8 +72,8 @@ project-root/
 ├── build.sh              # A script to build C++ splendor binary
 ├── play.py               # Allows human to play with a trained model in console
 ├── prepare_data.py       # Converts trajectory dumps into features
-├── train.py              # Trains policy model
 ├── self_play.py          # Runs self play -- train loop
+├── train.py              # Trains policy model
 ```
 
 ## Requirements
@@ -100,7 +101,7 @@ sudo xattr -r -d com.apple.quarantine /usr/local/libtorch/lib/libomp.dylib
 
 ### Build the binary
 
-Build C++ binary using `bild.sh` script. This will assemble the binary and copy it to the root folder. `Release` build mode is default. Execute `build.sh Debug` for debug binary version.  
+Build C++ binary using `build.sh` script. This will assemble the binary and copy it to the root folder. `Release` build mode is default. Execute `build.sh Debug` for debug binary version.  
 
 ### Run the binary
 
@@ -132,6 +133,9 @@ splendor sample_task.json
 
 Look at the `sample_task.json` file for a full example.
 
+### Run self play training loop
+
+
 
 ### Play against a trained model
 
@@ -151,6 +155,8 @@ The console game interface shows:
 
 - Each player's current points, collected card bonuses, gem tokens, and reserved cards in hand
 
+- Action is composed of a prefix letter (`t`=take gems, `r`=reserve card, `p`=purchase from board, `h`=purchase from hand) foloowed by a gem set description or a crad position, e.g. `tr2` means take two rubies or `p1n2` means purchase the level-1 card in position 2 on the board (zero based indexing is used).
+
 ```
 round: 4 player to move: 1
 nobles: [3|r3g3k3] [3|r3g3b3] [3|b4w4]
@@ -168,11 +174,12 @@ gems: r1g1k1
 hand: [w3|w6]
 ```
 
-### Run self play training loop
-
 ### Tests
 
-Tests ensure mutual consistency between Python and C++ game logic and feature computation. Run with `pytest --tb=long tests`
+Tests ensure mutual consistency between Python and C++ game logic and feature computation. Run with 
+```
+pytest --tb=long tests
+```
 
 ## Implementation Details
 
