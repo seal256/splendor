@@ -148,8 +148,8 @@ void MCTS::expand_node(std::shared_ptr<const GameState> state, std::shared_ptr<N
         node->children.push_back(child_node);
     }
     random_shuffle(node->children.begin(), node->children.end());
-    if (acting_player == CHANCE_PLAYER && node->children.size() > params.max_choice_children) {
-        node->children.resize(params.max_choice_children);
+    if (acting_player == CHANCE_PLAYER && node->children.size() > params.max_chance_children) {
+        node->children.resize(params.max_chance_children);
     }
 }
 
@@ -216,8 +216,8 @@ void PolicyMCTS::expand_node(std::shared_ptr<const GameState> state, std::shared
         node->children.push_back(child_node);
     }
     random_shuffle(node->children.begin(), node->children.end());
-    if (acting_player == CHANCE_PLAYER && node->children.size() > this->params.max_choice_children) {
-        node->children.resize(this->params.max_choice_children);
+    if (acting_player == CHANCE_PLAYER && node->children.size() > this->params.max_chance_children) {
+        node->children.resize(this->params.max_chance_children);
     }
 }
 
@@ -303,8 +303,8 @@ void PVMCTS::expand_node(std::shared_ptr<const GameState> state, std::shared_ptr
         node->children.push_back(child_node);
     }
     random_shuffle(node->children.begin(), node->children.end());
-    if (acting_player == CHANCE_PLAYER && node->children.size() > this->params.max_choice_children) {
-        node->children.resize(this->params.max_choice_children);
+    if (acting_player == CHANCE_PLAYER && node->children.size() > this->params.max_chance_children) {
+        node->children.resize(this->params.max_chance_children);
     }
 }    
 

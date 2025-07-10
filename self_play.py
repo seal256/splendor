@@ -11,7 +11,7 @@ POLICY_AGENT = {
             "type": "PolicyMCTSAgent",
             "iterations": 500,
             "exploration": 1.4,
-            "max_choice_children": 1,
+            "max_chance_children": 1,
             "weighted_selection_moves":20,
             "p_noise_level":0.0,
             "alpha":1.0, # creates a uniform distribution
@@ -27,7 +27,7 @@ MCTS_AGENT = {
             "type": "MCTSAgent",
             "iterations": 500,
             "exploration": 1.4,
-            "max_choice_children": 1,
+            "max_chance_children": 1,
             "train":False,
         }
 

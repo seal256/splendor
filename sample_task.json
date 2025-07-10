@@ -1,0 +1,30 @@
+{
+    "agents": [
+        {
+            "type": "PolicyMCTSAgent",
+            "name": "b",
+            "iterations": 500,
+            "max_chance_children": 1,
+            "train":false,
+            "policy" : {
+                "type" : "NNPolicy",
+                "model_path": "...",
+                "num_players": 2
+            }
+        },
+        {
+            "type": "MCTSAgent",
+            "name": "b",
+            "iterations": 500,
+            "max_chance_children": 1,
+            "train":false
+        }
+    ],
+    "rotate_agents": true,
+    "num_games": 1000,
+    "num_workers": 10,
+    "verbose": false,
+    "save_freqs": true,
+    "win_points": 5,
+    "dump_trajectories": "traj_model_vs_mcts.txt"
+}

@@ -197,8 +197,8 @@ mcts::MCTSParams parse_mcts_params(const json& jsn) {
     if (jsn.contains("max_rollout_len")) {
         params.max_rollout_len = jsn["max_rollout_len"];
     }
-    if (jsn.contains("max_choice_children")) {
-        params.max_choice_children = jsn["max_choice_children"];
+    if (jsn.contains("max_chance_children")) {
+        params.max_chance_children = jsn["max_chance_children"];
     }
     if (jsn.contains("use_rollout_policy")) {
         params.use_rollout_policy = jsn["use_rollout_policy"];

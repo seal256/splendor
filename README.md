@@ -1,4 +1,6 @@
-# MCTS embedded neural netwok strategy for Splendor table game trained with self play
+# MCTS with policy netwok strategy for Splendor table game
+
+Wide and shallow or thick and toll? This is the question that is on the mind of every Splendor player around the world. They are thinking about their card stack of course. AI model could give us a decisive answer if trained in an AlphaZero style. This repo is moving towards obtaining a pure self play solution for Splendor.
 
 ## Table of Contents
 - [Key Features](#key-features)
@@ -12,11 +14,11 @@
 ## Key Features
 
 - Splendor game logic and MCTS implemented in Python and C++
-- Minimalistic console interface for the game play
-- MCTS algorithm with chance node support + embedded neural network
+- MCTS algorithm with chance node support + embedded neural network policy
 - Action selection policy trained with PyTorch from self play
 - Games are collected with a fast C++ binary, while neural network training is performed in Python
-- Multicore game execution and 'mps' Torch backed
+- Reasonable train speed on a PC due to optimised C++ implementation and parallelisation
+- Minimalistic console game interface
 
 ## Experimental Results
 
@@ -28,7 +30,7 @@ w = \frac{1}{1 + 10^{(R_{\text{opp}} - R)/400}}
 $$
 
 For Splendor it is hard to find an AI model with confirmed rating. 
-An analysis of human games played on an open game platform Spendee is present on their [forum](https://spendee.mattle.online/lobby/forum/topic/mzXQmzjCBmyC56Dgx/splendor-strategy-data-analysis-part-1). Distributions of some game parameters, such as the number of acquired cards, nobles and game length with respect to player rating are reported. Using the correlation between average number of acquired cards and human player rating, we can indirectly estimate the rating of the model. We can loosely assume that the average number of cards purchased by the model is proportional to model's Elo rating. 
+An analysis of human games played on an open game platform Spendee is present on their [forum](https://spendee.mattle.online/lobby/forum/topic/mzXQmzjCBmyC56Dgx/splendor-strategy-data-analysis-part-1). Distributions of some game parameters, such as the number of acquired cards, nobles and game length are reported. Using the correlation between average number of acquired cards and human player rating, we can indirectly estimate the rating of the model. We can loosely assume that the average number of cards purchased by the model is proportional to model's Elo rating. 
 
 ![Ratings vs Cards](assets/rating_vs_cards.png)
 
@@ -102,9 +104,34 @@ Build C++ binary using `bild.sh` script. This will assemble the binary and copy 
 
 ### Run the binary
 
+The binary collects game trajectories using the configuration specified in a JSON input file. Key parameters include:
+
+`agents`: Defines the players (`RandomAgent`, `MCTSAgent`, `PolicyMCTSAgent`):
+
+`model_path`: Path to policy model (for PolicyMCTSAgent)
+
+`iterations`: Number of MCTS rollouts per move
+
+`max_chance_children`: Limits branching at chance nodes (new card draws)
+
+`rotate_agents`: Switches starting player between games (to mitigate first move advantage)
+
+`num_games`: Total games to simulate
+
+`num_workers`: Parallel threads for faster data generation
+
+`win_points`: Shortens games by reducing victory condition (e.g., 5 pts instead of 15)
+
+`dump_trajectories`: Output path for saving games
+
+Example usage:
+
 ```
-splndor sample_task.json
+splendor sample_task.json
 ```
+
+Look at the `sample_task.json` file for a full example.
+
 
 ### Play against a trained model
 
