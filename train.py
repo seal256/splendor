@@ -226,7 +226,7 @@ def train_loop(model, train_loader, val_loader, optimizer, criterion, device, nu
             best_val_loss = val_loss
             save_model(model, model_path + '_best', verbose)
 
-def train(trained_model_name, train_dir, val_dir, num_epochs=5, load_model_name=None):
+def train(trained_model_name, train_dir, val_dir, num_epochs=5, start_model_name=None):
     """
     Trains a neural network model on Splendor game trajectories preprocessed by prepare_data() function.
 
@@ -245,7 +245,7 @@ def train(trained_model_name, train_dir, val_dir, num_epochs=5, load_model_name=
 
         num_epochs (int, optional): Number of training epochs to run.
         
-        load_model_name (str, optional): Name of a pre-trained model to load and continue training.
+        start_model_name (str, optional): Name of a pre-trained model to load and continue training.
                                         If None, training starts from scratch.
 
     """
@@ -261,9 +261,9 @@ def train(trained_model_name, train_dir, val_dir, num_epochs=5, load_model_name=
 
     model = MLP(hidden_size=512, hidden_layers=2)
     # model = ResNet(hidden_size=512, num_blocks=2)
-    if load_model_name is not None:
-        print(f'Loading model from {load_model_name}')
-        model = torch.jit.load(load_model_name, map_location=torch.device(device))
+    if start_model_name is not None:
+        print(f'Loading model from {start_model_name}')
+        model = torch.jit.load(start_model_name, map_location=torch.device(device))
 
     train_dataset = SplendorDataset(data_fname_prefix=train_dir)
     val_dataset = SplendorDataset(data_fname_prefix=val_dir)
@@ -315,7 +315,7 @@ def custom_model_evaluation():
         print(f'data entropy: {val_data_entropy:.4f}')
         # print(classification_report(val_classif_correct, val_classif_pred, labels = list(range(len(PLAYER_ACTIONS))), target_names = PLAYER_ACTIONS, zero_division=0))
 
-def random_model(model_name):
+def create_random_model(model_name):
     model = MLP(hidden_size=512, hidden_layers=2)
     save_model(model, model_name, verbose=True)
 

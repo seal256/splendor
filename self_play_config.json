@@ -1,0 +1,13 @@
+{
+    "model": null,
+    "start_step": 0,
+    "train_games": 5000,
+    "val_games": 500,
+    "train_buffer_size": 10,
+    "train_epochs": 1,
+    "new_model_eval_games": 1000,
+    "min_win_rate": 0.54,
+    "max_iterations": 100,
+    "max_iters_without_improvement": 12,
+    "work_dir": "data"
+  }
