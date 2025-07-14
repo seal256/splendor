@@ -52,3 +52,27 @@ def print_game_record(traj: Trajectory):
     for id, r in enumerate(game_state.rewards()):
         print(f'player{id}: {r}')
  
+def custom_model_evaluation():
+    work_dir = './data_2404'
+
+    device = 'mps'
+    model_name = f'{work_dir}/model_reserve_masked_50k_best.pt'
+    model = torch.jit.load(model_name, map_location=torch.device(device))
+    model.eval()
+    print_weigths(model)
+        
+    criterion = loss
+    batch_size = 1024
+
+    for move in [5, 10, 15, 20, 25, 30]:
+        val_dir = f'{work_dir}/val_rm10k_move{move}'
+        val_dataset = SplendorDataset(data_fname_prefix=val_dir)
+        val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+        val_data_entropy = data_loss(val_loader, criterion)
+
+        val_loss, val_classif_pred, val_classif_correct = validate(model, val_loader, criterion, device)
+        val_accuracy = accuracy_score(val_classif_correct, val_classif_pred)
+
+        print(f"move {move}: val loss: {val_loss:.4f}, accuracy: {val_accuracy:.4f}")
+        print(f'data entropy: {val_data_entropy:.4f}')
+        # print(classification_report(val_classif_correct, val_classif_pred, labels = list(range(len(PLAYER_ACTIONS))), target_names = PLAYER_ACTIONS, zero_division=0))

@@ -17,16 +17,27 @@ class ActionType:
     purchase_hand = 'h' # purchase hand card
     new_table_card = 'c' # new table card from deck. Performed by randomness rather than any of the players
 
-class GemSet(list):
+class GemSet:
     '''Count/price for each gem'''
     def __init__(self):
-        super().__init__([0] * 6)
+        self._counts = [0] * NUM_GEMS
+
+    def __getitem__(self, gem):
+        return self._counts[gem]
+
+    def __setitem__(self, gem, count):
+        self._counts[gem] = count
 
     def __str__(self):
-        return ''.join([GEM_STR[gem] + str(count) for gem, count in enumerate(self) if count > 0])
+        return ''.join([GEM_STR[gem] + str(count) for gem, count in enumerate(self._counts) if count > 0])
+
+    def copy(self):
+        new_gem_set = GemSet()
+        new_gem_set._counts = self._counts.copy()
+        return new_gem_set
 
     def unique(self):
-        return sum([1 for x in self if x > 0])
+        return sum([1 for x in self._counts if x > 0])
 
     @classmethod
     def from_str(cls, input_str):
@@ -141,8 +152,8 @@ class SplendorPlayerState:
     
     def copy(self):
         cp = copy.copy(self) # shallow copy
-        cp.card_gems = copy.copy(self.card_gems) # deep copy
-        cp.gems = copy.copy(self.gems)
+        cp.card_gems = self.card_gems.copy() # deep copy
+        cp.gems = self.gems.copy()
         cp.hand_cards = list(self.hand_cards)
         return cp
 
@@ -222,6 +233,12 @@ ACTIONS_STR = ["s", # skip move
     "h0","h1","h2", # purchase from hand
     "c0","c1","c2","c3","c4","c5","c6","c7","c8","c9","c10","c11","c12","c13","c14","c15","c16","c17","c18","c19","c20","c21","c22","c23","c24","c25","c26","c27","c28","c29","c30","c31","c32","c33","c34","c35","c36","c37","c38","c39" # new card (choice node actions)
 ]
+# all possible actions that are avialable to players
+PLAYER_ACTIONS_STR = ["s","tr2","tg2","tb2","tw2","tk2","tr1g1b1","tr1g1w1","tr1g1k1","tr1b1w1","tr1b1k1","tr1w1k1","tg1b1w1","tg1b1k1","tg1w1k1","tb1w1k1",
+               "r0n0","r0n1","r0n2","r0n3","r1n0","r1n1","r1n2","r1n3","r2n0","r2n1","r2n2","r2n3",
+               "p0n0","p0n1","p0n2","p0n3","p1n0","p1n1","p1n2","p1n3","p2n0","p2n1","p2n2","p2n3",
+               "h0","h1","h2"]
+
 
 ACTIONS = [Action.from_str(a) for a in ACTIONS_STR]
 ACTION_IDS = {s: idx for idx, s in enumerate(ACTIONS_STR)}
@@ -299,7 +316,7 @@ class SplendorGameState(GameState):
         cp.nobles = list(self.nobles)
         cp.decks = [list(self.decks[level]) for level in range(CARD_LEVELS)]
         cp.cards = [list(self.cards[level]) for level in range(CARD_LEVELS)]
-        cp.gems = copy.copy(self.gems)
+        cp.gems = self.gems.copy()
         cp.players = [player.copy() for player in self.players]
         return cp
 

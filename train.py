@@ -2,9 +2,14 @@ from datetime import datetime
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.utils.data import DataLoader, Dataset, random_split
+from torch.utils.data import DataLoader, Dataset
 import numpy as np
 from sklearn.metrics import accuracy_score, classification_report
+import random
+import json
+from dataclasses import dataclass, asdict
+from typing import Union, List, Optional
+import argparse
 
 from prepare_data import PLAYER_ACTIONS
 STATE_LEN = 1052
@@ -226,111 +231,77 @@ def train_loop(model, train_loader, val_loader, optimizer, criterion, device, nu
             best_val_loss = val_loss
             save_model(model, model_path + '_best', verbose)
 
-def train(trained_model_name, train_dir, val_dir, num_epochs=5, start_model_name=None):
-    """
+@dataclass
+class TrainConfig:
+    model: Optional[str] = None             # Pretrained model to start with
+    result_model_name: str                  # Name of the resulting model
+    train_dir: Union[str, List[str]]        # Path prefix(es) for training data files. Accepts either string or list of strings (e.g., ["./data/train1", "./data/train2"])
+    val_dir: Union[str, List[str]]
+    verbose: bool = True
+
+    num_epochs: int = 5
+    batch_size: int = 128
+    seed: Optional[int] = None
+
+    hidden_size: int = 512  # For MLP
+    hidden_layers: int = 2  # For MLP
+
+    learning_rate: float = 3e-4
+    weight_decay: float = 3e-4
+
+
+def train(config: TrainConfig):
+    '''
     Trains a neural network model on Splendor game trajectories preprocessed by prepare_data() function.
+    '''
 
-    Args:
-        trained_model_name (str): Name/identifier for the trained model. 
-        
-        train_dir (str or list): Path prefix(es) for training data files. This can be either:
-                                - A single string prefix (e.g., "./data/train")
-                                - A list of prefixes (e.g., ["./data/train1", "./data/train2"])
-                                The actual data files should have suffixes:
-                                "_states.npy", "_actions.npy", and "_rewards.npy"
-                                as produced by prepare_data()
-        
-        val_dir (str or list): Path prefix(es) for validation data files. Accepts the same formats
-                              as train_dir. Files should follow the same naming convention.
+    print('Train configuration:')
+    print(json.dumps(asdict(config), indent=2))
 
-        num_epochs (int, optional): Number of training epochs to run.
-        
-        start_model_name (str, optional): Name of a pre-trained model to load and continue training.
-                                        If None, training starts from scratch.
-
-    """
-
-    # seed = 1828
-    # np.random.seed(seed)
-    # torch.manual_seed(seed)
-
-    batch_size = 128
+    seed = config.seed if config.seed else random.randint(0, 1000000)
+    torch.manual_seed(seed)
+    print(f'seed: {seed}')
 
     device = "mps" if torch.backends.mps.is_available() else "cpu"
     print(f'device: {device}')
 
-    model = MLP(hidden_size=512, hidden_layers=2)
+    model = MLP(hidden_size=config.hidden_size, hidden_layers=config.hidden_layers)
     # model = ResNet(hidden_size=512, num_blocks=2)
-    if start_model_name is not None:
-        print(f'Loading model from {start_model_name}')
-        model = torch.jit.load(start_model_name, map_location=torch.device(device))
+    if config.model is not None:
+        print(f'Loading model from {config.model}')
+        model = torch.jit.load(config.model, map_location=torch.device(device))
 
-    train_dataset = SplendorDataset(data_fname_prefix=train_dir)
-    val_dataset = SplendorDataset(data_fname_prefix=val_dir)
+    train_dataset = SplendorDataset(data_fname_prefix=config.train_dir)
+    val_dataset = SplendorDataset(data_fname_prefix=config.val_dir)
     print(f'train set len: {len(train_dataset)} val set len: {len(val_dataset)}')
     
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+    train_loader = DataLoader(train_dataset, batch_size=config.batch_size, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=config.batch_size, shuffle=False)
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=3e-4, weight_decay=3e-4)
+    optimizer = torch.optim.Adam(model.parameters(), lr=config.learning_rate, weight_decay=config.weight_decay)
     criterion = loss
 
     train_data_entropy = data_loss(train_loader, criterion)
     val_data_entropy = data_loss(val_loader, criterion)
     print(f'train data entropy: {train_data_entropy:.4f}, val data entropy: {val_data_entropy:.4f}')
 
-    train_loop(model, train_loader, val_loader, optimizer, criterion, device, num_epochs, model_path=trained_model_name, verbose=True)
+    train_loop(model, train_loader, val_loader, optimizer, criterion, device, config.num_epochs, model_path=config.result_model_name, verbose=config.verbose)
     # save_model(model, trained_model_name + '_last', verbose=False)
 
-
-# def export_model_with_torchscript():
-#     model_path = './data/models/mlp_10k_bw.pth'
-#     model = MLP(input_size=STATE_LEN, hidden_size=100, num_actions=NUM_ACTIONS)
-#     model.load_state_dict(torch.load(model_path))
-#     sm = torch.jit.script(model)
-#     sm.save('./data/models/mlp_10k_bw.pt')
-
-def custom_model_evaluation():
-    work_dir = './data_2404'
-
-    device = 'mps'
-    model_name = f'{work_dir}/model_reserve_masked_50k_best.pt'
-    model = torch.jit.load(model_name, map_location=torch.device(device))
-    model.eval()
-    print_weigths(model)
-        
-    criterion = loss
-    batch_size = 1024
-
-    for move in [5, 10, 15, 20, 25, 30]:
-        val_dir = f'{work_dir}/val_rm10k_move{move}'
-        val_dataset = SplendorDataset(data_fname_prefix=val_dir)
-        val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
-        val_data_entropy = data_loss(val_loader, criterion)
-
-        val_loss, val_classif_pred, val_classif_correct = validate(model, val_loader, criterion, device)
-        val_accuracy = accuracy_score(val_classif_correct, val_classif_pred)
-
-        print(f"move {move}: val loss: {val_loss:.4f}, accuracy: {val_accuracy:.4f}")
-        print(f'data entropy: {val_data_entropy:.4f}')
-        # print(classification_report(val_classif_correct, val_classif_pred, labels = list(range(len(PLAYER_ACTIONS))), target_names = PLAYER_ACTIONS, zero_division=0))
 
 def create_random_model(model_name):
     model = MLP(hidden_size=512, hidden_layers=2)
     save_model(model, model_name, verbose=True)
 
 if __name__ == "__main__":
-    # random_model('data/models/random_2_512')
-    # custom_model_evaluation()
-    work_dir = '/Users/seal/projects/splendor/data_0107'
-    
-    # name = 'step_19'
-    # model_name = f'{work_dir}/model_{name}'
-    # train_dir = f'{work_dir}/train_{name}'
-    # val_dir = f'{work_dir}/val_{name}'
-    step = 9
-    model_name = f'{work_dir}/model_step_{step}'
-    train_dir = [f'{work_dir}/train_step_{n}' for n in range(step + 1)]
-    val_dir = [f'{work_dir}/val_step_{n}' for n in range(step + 1)]
-    train(model_name, train_dir, val_dir, num_epochs=1)
+    parser = argparse.ArgumentParser(description="Train configuration")
+    parser.add_argument("-c", "--config-file", required=True, help="JSON configuration file")
+
+    args = parser.parse_args()
+    with open(args.c) as f:
+        data = json.load(f)
+    config = TrainConfig(**data)
+
+    train(config)
+
     

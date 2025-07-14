@@ -25,9 +25,9 @@ def human_vs_policy_mcts(model_path, iterations=500, win_points=15):
     
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Human vs Policy MCTS for Splendor')
-    parser.add_argument('-m', '--model_path', type=str, required=True, help='Path to the trained model')
+    parser.add_argument('-m', '--model_path', type=str, default='/Users/seal/projects/splendor/data_0207_wp5/model_step_69_best.pt', help='Path to the trained model')
     parser.add_argument('-i', '--iterations', type=int, default=500, help='Number of MCTS iterations per move')
-    parser.add_argument('-w', '--win_points', type=int, default=15, help='Points needed to win the game')
+    parser.add_argument('-w', '--win_points', type=int, default=5, help='Points needed to win the game')
     
     args = parser.parse_args()
     

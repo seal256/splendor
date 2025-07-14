@@ -3,12 +3,12 @@ from copy import deepcopy
 from datetime import datetime
 import subprocess
 import argparse
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from pathlib import Path
 from typing import Optional
 
 from pysplendor.game import traj_loader
-from train import train, create_random_model
+from train import train, create_random_model, TrainConfig
 from prepare_data import prepare_data
 
 POLICY_AGENT = {
@@ -156,7 +156,7 @@ def self_play_steps():
 class SelfPlayConfig:
     """Self-play training configuration"""
 
-    model: str = None                       # Path to initial model (if None new random model will be used)
+    model: str = None                       # Path to initial model (if None a new random model will be used)
     start_step: int = 0                     # Restarts process from the middle if needed
     train_games: int = 5000                 # New train games generated per iteration
     val_games: int = 500                    # New validation games generated per iteration (used for model overfitting control)
@@ -167,9 +167,13 @@ class SelfPlayConfig:
     max_iterations: int = 100               # Max total training iterations
     max_iters_without_improvement: int = 12 # Early stopping condition: Stop after this many non-improving iterations
     work_dir: str = "data"                  # Directory for output files
+    train: TrainConfig = None               # 
 
 
 def self_play_loop(config: SelfPlayConfig):
+    print('Self play configuration:')
+    print(json.dumps(asdict(config), indent=2))
+
     os.makedirs(config.work_dir, exist_ok=True)
     best_model = config.model 
     if not best_model:
@@ -201,8 +205,12 @@ def self_play_loop(config: SelfPlayConfig):
         if len(train_dirs) < config.train_buffer_size:
             continue
         print('Training new model', flush=True)
-        model_name_prefix = f'{config.work_dir}/model_step_{step}'
-        train(model_name_prefix, train_dirs[-config.train_buffer_size:], val_dirs[-config.train_buffer_size:], config.train_epochs, best_model)
+        train_config = deepcopy(config.train)
+        train_config.train_dir = train_dirs[-config.train_buffer_size:]
+        train_config.val_dir = val_dirs[-config.train_buffer_size:]
+        train_config.model = best_model
+        train_config.result_model_name = f'{config.work_dir}/model_step_{step}'
+        train(train_config)
         new_model = model_name_prefix + '_best.pt'
 
         # evaluate new model against the previous best one
@@ -244,7 +252,7 @@ def load_config_from_json(file_path) -> SelfPlayConfig:
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Self-play training configuration")
+    parser = argparse.ArgumentParser(description="Self-play configuration")
     parser.add_argument("-c", "--config-file", required=True, help="JSON configuration file")
     
     args = parser.parse_args()
