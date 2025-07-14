@@ -14,7 +14,7 @@ class SplendorGameStateEncoder:
         self.rules = DEFAULT_RULES.get(self.num_players)
         
         self.max_card_points = 5 # The maximum number of win points on splenodr cards
-        self.max_cards = 6  # The maximum number of cards of one color that the player can aquire. In rare cases this can be exceeded!
+        self.max_cards = 6  # The maximum number of cards of one color that the player can aсquire. In rare cases this can be exceeded!
         self.card_vec_len = len(self._card_to_vec(Card.from_str("[k0|r1g1b1w1]")))
         self.noble_vec_len = len(self._noble_to_vec(Noble.from_str("[3|r3g3b3]")))
 
@@ -74,7 +74,7 @@ class SplendorGameStateEncoder:
 
         return nobles + table_cards + players + table_gems
 
-def prepare_data(traj_file, data_fname_prefix, only_winner_moves = False, num_players = 2):
+def prepare_features(traj_file, data_fname_prefix, only_winner_moves = False, num_players = 2):
     '''Creates 3 files with states, actions and rewards
     
     Args:
@@ -101,7 +101,6 @@ def prepare_data(traj_file, data_fname_prefix, only_winner_moves = False, num_pl
                     continue
                 state_vec = state_encoder.state_to_vec(state)
                 states.append(np.packbits(state_vec)) # compressed bytes
-                # actions.append(ACTION_ID[str(action)]) # ints
                 rewards.append(reward) # 0 or 1 
                 if traj.freqs:
                     freq_vec = [0.0] * len(PLAYER_ACTIONS_STR)
@@ -131,4 +130,4 @@ if __name__ == "__main__":
     parser.add_argument('--only_winner_moves', action='store_true', help='Use only moves of the winning player (makes rewards files contain only 1s)')
     args = parser.parse_args()
 
-    prepare_data(traj_file=args.traj_file, data_fname_prefix=args.data_prefix, only_winner_moves=args.only_winner_moves)
+    prepare_features(traj_file=args.traj_file, data_fname_prefix=args.data_prefix, only_winner_moves=args.only_winner_moves)

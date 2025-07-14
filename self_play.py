@@ -9,7 +9,7 @@ from typing import Optional
 
 from pysplendor.game import traj_loader
 from train import train, create_random_model, TrainConfig
-from prepare_data import prepare_data
+from prepare_features import prepare_features
 
 POLICY_AGENT = {
             "type": "PolicyMCTSAgent",
@@ -132,8 +132,8 @@ def self_play_steps():
         # preprocess data for model training
         train_dir = f'{WORK_DIR}/train_step_{step}'
         val_dir = f'{WORK_DIR}/val_step_{step}'
-        prepare_data(train_traj, train_dir)
-        prepare_data(val_traj, val_dir)
+        prepare_features(train_traj, train_dir)
+        prepare_features(val_traj, val_dir)
 
         # train new model        
         model_name_prefix = f'{WORK_DIR}/model_step_{step}'
@@ -167,7 +167,7 @@ class SelfPlayConfig:
     max_iterations: int = 100               # Max total training iterations
     max_iters_without_improvement: int = 12 # Early stopping condition: Stop after this many non-improving iterations
     work_dir: str = "data"                  # Directory for output files
-    train: TrainConfig = None               # 
+    train: TrainConfig = None               # Model train parameters
 
 
 def self_play_loop(config: SelfPlayConfig):
@@ -196,22 +196,22 @@ def self_play_loop(config: SelfPlayConfig):
         # preprocess data for model training
         train_dir = f'{config.work_dir}/train_step_{step}'
         val_dir = f'{config.work_dir}/val_step_{step}'
-        prepare_data(train_traj, train_dir)
-        prepare_data(val_traj, val_dir)
+        prepare_features(train_traj, train_dir)
+        prepare_features(val_traj, val_dir)
         train_dirs.append(train_dir)
         val_dirs.append(val_dir)
 
         # train new model     
         if len(train_dirs) < config.train_buffer_size:
             continue
-        print('Training new model', flush=True)
+        new_model = f'{config.work_dir}/model_step_{step}.pt'
+        print(f'Training new model {new_model}', flush=True)
         train_config = deepcopy(config.train)
         train_config.train_dir = train_dirs[-config.train_buffer_size:]
         train_config.val_dir = val_dirs[-config.train_buffer_size:]
-        train_config.model = best_model
-        train_config.result_model_name = f'{config.work_dir}/model_step_{step}'
+        train_config.start_model_name = best_model
+        train_config.result_model_name = new_model
         train(train_config)
-        new_model = model_name_prefix + '_best.pt'
 
         # evaluate new model against the previous best one
         new_vs_best_traj = run_games('new_vs_best', step, new_model, best_model, config.new_model_eval_games, train=False, rotate_agents=True)

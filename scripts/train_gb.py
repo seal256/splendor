@@ -2,7 +2,7 @@ import numpy as np
 import lightgbm as lgb
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, classification_report, mean_squared_error, mean_absolute_error
-from prepare_data import PLAYER_ACTIONS
+from prepare_features import PLAYER_ACTIONS
 import matplotlib.pyplot as plt
 
 STATE_LEN = 1052

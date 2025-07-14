@@ -11,7 +11,8 @@ from dataclasses import dataclass, asdict
 from typing import Union, List, Optional
 import argparse
 
-from prepare_data import PLAYER_ACTIONS
+from pysplendor.splendor import PLAYER_ACTIONS_STR
+
 STATE_LEN = 1052
 NUM_ACTIONS = 43
 
@@ -196,16 +197,10 @@ def print_weigths(model):
 
 
 def save_model(model, path, verbose=True):
-    model_path = path + '.pth'
-    torch.save(model.state_dict(), model_path)
-    if verbose:
-        print(f'Model is saved to {model_path}')
-
-    sm_model_path = path + '.pt'
     sm = torch.jit.script(model)
-    sm.save(sm_model_path)
+    sm.save(path)
     if verbose:
-        print(f'Jit script model is saved to {sm_model_path}')
+        print(f'Jit script model is saved to {path}')
 
 def train_loop(model, train_loader, val_loader, optimizer, criterion, device, num_epochs, model_path, verbose=True):
     model = model.to(device)
@@ -225,19 +220,19 @@ def train_loop(model, train_loader, val_loader, optimizer, criterion, device, nu
         
         if verbose:
             print_weigths(model)
-            print(classification_report(val_classif_correct, val_classif_pred, labels = list(range(len(PLAYER_ACTIONS))), target_names = PLAYER_ACTIONS, zero_division=0))
+            print(classification_report(val_classif_correct, val_classif_pred, labels = list(range(len(PLAYER_ACTIONS_STR))), target_names = PLAYER_ACTIONS_STR, zero_division=0))
 
         if val_loss < best_val_loss:
             best_val_loss = val_loss
-            save_model(model, model_path + '_best', verbose)
+            save_model(model, model_path, verbose)
 
 @dataclass
 class TrainConfig:
-    model: Optional[str] = None             # Pretrained model to start with
-    result_model_name: str                  # Name of the resulting model
+    result_model_name: str                  # Name of the best trained model (according to validation set loss)
     train_dir: Union[str, List[str]]        # Path prefix(es) for training data files. Accepts either string or list of strings (e.g., ["./data/train1", "./data/train2"])
     val_dir: Union[str, List[str]]
     verbose: bool = True
+    start_model_name: Optional[str] = None  # Pretrained model to start with
 
     num_epochs: int = 5
     batch_size: int = 128
@@ -252,7 +247,7 @@ class TrainConfig:
 
 def train(config: TrainConfig):
     '''
-    Trains a neural network model on Splendor game trajectories preprocessed by prepare_data() function.
+    Trains a neural network model on Splendor game trajectories preprocessed by prepare_features() function.
     '''
 
     print('Train configuration:')
@@ -267,9 +262,9 @@ def train(config: TrainConfig):
 
     model = MLP(hidden_size=config.hidden_size, hidden_layers=config.hidden_layers)
     # model = ResNet(hidden_size=512, num_blocks=2)
-    if config.model is not None:
-        print(f'Loading model from {config.model}')
-        model = torch.jit.load(config.model, map_location=torch.device(device))
+    if config.start_model_name is not None:
+        print(f'Loading model from {config.start_model_name}')
+        model = torch.jit.load(config.start_model_name, map_location=torch.device(device))
 
     train_dataset = SplendorDataset(data_fname_prefix=config.train_dir)
     val_dataset = SplendorDataset(data_fname_prefix=config.val_dir)
@@ -298,8 +293,9 @@ if __name__ == "__main__":
     parser.add_argument("-c", "--config-file", required=True, help="JSON configuration file")
 
     args = parser.parse_args()
-    with open(args.c) as f:
+    with open(args.config_file) as f:
         data = json.load(f)
+    print(data)
     config = TrainConfig(**data)
 
     train(config)

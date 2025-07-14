@@ -3,7 +3,7 @@ from pysplendor.agents import RandomAgent, MCTSAgent, Agent, HumanPlayer
 from pysplendor.splendor import SplendorGameState, ACTIONS_STR, SplendorGameRules, DEFAULT_RULES
 from pysplendor.game import run_one_game, Trajectory, traj_loader
 from pysplendor.mcts import MCTS, PVMCTS, Value, PolicyMCTS, Policy, MCTSParams
-from prepare_data import SplendorGameStateEncoder
+from prepare_features import SplendorGameStateEncoder
 from train import STATE_LEN, NUM_ACTIONS, MLP
 
 def print_trajectory_from_file(file_name, line_num):

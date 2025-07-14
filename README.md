@@ -67,11 +67,13 @@ Error bars on the figure show one standart deviation. Results for the restricted
 project-root/
 │
 ├── pysplendor/           # Python implementation of Splendor game logic and MCTS
+├── sample_configs/       # sample configuration files
+├── scripts/              # miscellanea
 ├── src/                  # C++ source files
 ├── tests/                # Check mutual consistency of the C++ and Python implementations 
 ├── build.sh              # A script to build C++ splendor binary
 ├── play.py               # Allows human to play with a trained model in console
-├── prepare_data.py       # Converts trajectory dumps into features
+├── prepare_features.py   # Converts trajectory dumps into features
 ├── self_play.py          # Runs self play -- train loop
 ├── train.py              # Trains policy model
 ```
@@ -105,7 +107,13 @@ Build C++ binary using `build.sh` script. This will assemble the binary and copy
 
 ### Run the binary
 
-The binary collects game trajectories using the configuration specified in a JSON input file. Key parameters include:
+The binary collects game trajectories using the configuration specified in a JSON input file. 
+
+```
+splendor sample_configs/random_vs_mcts.json
+```
+
+Key parameters include:
 
 `agents`: Defines the players (`RandomAgent`, `MCTSAgent`, `PolicyMCTSAgent`):
 
@@ -125,17 +133,25 @@ The binary collects game trajectories using the configuration specified in a JSO
 
 `dump_trajectories`: Output path for saving games
 
-Example usage:
+### Run train script
 
+Transform collected trajectories into feature files
 ```
-splendor sample_task.json
+python prepare_features.py --traj_file "trajectories dump file" --data_file "feature path prefix"
 ```
 
-Look at the `sample_task.json` file for a full example.
+Then run model training
+```
+python train.py -c sample_configs/train_config.json
+```
 
 ### Run self play training loop
 
+Runs previous steps in a loop slowly improving model performance 
 
+```
+python train.py -c sample_configs/self_play_config.json
+```
 
 ### Play against a trained model
 

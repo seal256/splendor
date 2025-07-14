@@ -1,0 +1,9 @@
+{
+    "result_model_name": "model.pt",
+    "train_dir": ["./data/train_step_0"],
+    "val_dir": ["./data/val_step_0"],
+    "verbose": true,
+    "num_epochs": 10,
+    "learning_rate": 0.0003,
+    "weight_decay": 0.0003
+}

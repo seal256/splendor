@@ -1,0 +1,22 @@
+{
+    "agents": [
+        {
+            "type": "RandomAgent",
+            "name": "a"
+        },
+        {
+            "type": "MCTSAgent",
+            "name": "b",
+            "iterations": 500,
+            "max_chance_children": 1,
+            "train":false
+        }
+    ],
+    "rotate_agents": true,
+    "num_games": 1000,
+    "num_workers": 10,
+    "verbose": false,
+    "save_freqs": true,
+    "win_points": 15,
+    "dump_trajectories": "traj_random_vs_mcts.txt"
+}

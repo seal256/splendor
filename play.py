@@ -4,7 +4,7 @@ from pysplendor.agents import RandomAgent, MCTSAgent, HumanPlayer, load_mlp_mode
 from pysplendor.splendor import SplendorGameState, SplendorGameRules
 from pysplendor.game import run_one_game, Trajectory
 from pysplendor.mcts import MCTSParams
-from prepare_data import SplendorGameStateEncoder
+from prepare_features import SplendorGameStateEncoder
 
 def human_vs_policy_mcts(model_path, iterations=500, win_points=15):
     '''Plays one game between a human player and an MCTS agent guided by a neural network policy.'''

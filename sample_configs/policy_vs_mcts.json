@@ -2,13 +2,13 @@
     "agents": [
         {
             "type": "PolicyMCTSAgent",
-            "name": "b",
+            "name": "a",
             "iterations": 500,
             "max_chance_children": 1,
             "train":false,
             "policy" : {
                 "type" : "NNPolicy",
-                "model_path": "...",
+                "model_path": "full path to the model",
                 "num_players": 2
             }
         },
@@ -25,6 +25,6 @@
     "num_workers": 10,
     "verbose": false,
     "save_freqs": true,
-    "win_points": 5,
+    "win_points": 15,
     "dump_trajectories": "traj_model_vs_mcts.txt"
 }
