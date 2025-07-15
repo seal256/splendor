@@ -1,6 +1,7 @@
 __pycache__
 build/
 bin/
+configs/
 data*
 splendor
 .vscode/settings.json

@@ -1,9 +1,6 @@
-from dataclasses import dataclass
-import re
-from typing import List
-
 from dataclasses import dataclass, field
 from typing import List
+import math, json
 
 @dataclass
 class NNPolicyConfig:
@@ -39,55 +36,79 @@ class GameConfig:
     rotate_agents: bool = False
     dump_trajectories: str = ""
 
-
-
+@dataclass
+class PlayerStats:
+    total_score: float
+    win_rate: float
+    confidence_interval: float
+    cards_mean: float
+    cards_std: float
 
 @dataclass
-class JobReport:
-    step: int
-    player_a_score: float
-    player_a_conf: float
-    player_a_cards_mean: float
-    player_a_cards_std: float
-    game_length_avg: float
+class GameStats:
+    num_games: int
+    players: List[PlayerStats]
+    game_length_mean: float
     game_length_std: float
 
-def parse_job_report(file_path: str) -> List[JobReport]:
-    with open(file_path, 'r') as file:
-        content = file.read()
+    @classmethod
+    def from_json(cls, data: dict):
+        players = [PlayerStats(**p) for p in data['players']]
+        return cls(
+            num_games=data['num_games'],
+            players=players,
+            game_length_mean=data['game_length_mean'],
+            game_length_std=data['game_length_std']
+        )
+
+def avg_dev(values):
+    """Calculate average and standard deviation of a list of values"""
+    if not values:
+        return 0.0, 0.0
     
-    reports = re.split(r'(?=\nseed:)', content.strip())
-    results = []
-    
-    for report in reports:
-        if not report.strip():
-            continue
-            
-        # Extract player a stats
-        player_a_match = re.search(
-            r'player a: total score: [\d.]+,\s*mean score: ([\d.]+),\s*score conf interval: ([\d.]+),\s*cards mean: ([\d.]+),\s*cards std dev: ([\d.]+)',
-            report
-        )
-        # Extract game length stats
-        game_length_match = re.search(
-            r'game length avg: ([\d.]+),\s*std dev: ([\d.]+)',
-            report
-        )
-        # Extract step number
-        step_match = re.search(
-            r'traj_trained_vs_mcts_step_(\d+)\.txt',
-            report
-        )
+    n = len(values)
+    mean = sum(values) / n
+    std_dev = math.sqrt(sum((x - mean) ** 2 for x in values) / n)
+    return mean, std_dev
+
+def extract_stats(trajectories) -> GameStats:
+    if not trajectories:
+        return GameStats(0, [], 0.0, 0.0)
+
+    num_games = len(trajectories)
+    num_players = len(trajectories[0].rewards)
+    player_names = trajectories[0].agent_names
+
+    total_scores = [0.0] * num_players
+    card_counts = [[] for _ in range(num_players)]
+    game_lengths = []
+
+    for traj in trajectories:
+        for player in range(num_players):
+            idx = traj.agent_names.index(player_names[player])
+            total_scores[player] += traj.rewards[idx]
+
+        # Replay game to get the final state
+        state = traj.initial_state.copy()
+        for action in traj.actions:
+            state.apply_action(action)
         
-        if all([player_a_match, game_length_match, step_match]):
-            results.append(JobReport(
-                step=int(step_match.group(1)),
-                player_a_score=float(player_a_match.group(1)),
-                player_a_conf=float(player_a_match.group(2)),
-                player_a_cards_mean=float(player_a_match.group(3)),
-                player_a_cards_std=float(player_a_match.group(4)),
-                game_length_avg=float(game_length_match.group(1)),
-                game_length_std=float(game_length_match.group(2))
-            ))
-    
-    return results
+        game_lengths.append(state.round)
+        
+        for player in range(num_players):
+            idx = traj.agent_names.index(player_names[player])
+            num_cards = sum(state.players[idx].card_gems._counts)
+            card_counts[player].append(num_cards)
+
+    sum_scores = sum(total_scores)
+    game_length_mean, game_length_std = avg_dev(game_lengths)
+
+    players_stats = []
+    for player in range(num_players):
+        cards_mean, cards_std = avg_dev(card_counts[player])
+        win_rate = total_scores[player] / sum_scores
+        conf_interval = 2.58 * math.sqrt(win_rate * (1.0 - win_rate) / sum_scores) # 99% conf interval
+        
+        players_stats.append(PlayerStats(total_scores[player], win_rate, conf_interval, cards_mean, cards_std))
+
+    return GameStats(num_games, players_stats, game_length_mean, game_length_std)

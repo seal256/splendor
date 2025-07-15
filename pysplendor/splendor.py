@@ -226,6 +226,7 @@ class ActionError:
     GAME_DOES_NOT_NEED_NEW_TABLE_CARD = "Game doesn't need new table card"
     INVALID_ACTION_TYPE = "Invalid action type"
 
+# full action list including chance node actions
 ACTIONS_STR = ["s", # skip move
     "tr2","tg2","tb2","tw2","tk2","tr1g1b1","tr1g1w1","tr1g1k1","tr1b1w1","tr1b1k1","tr1w1k1","tg1b1w1","tg1b1k1","tg1w1k1","tb1w1k1", # take 
     "r0n0","r0n1","r0n2","r0n3","r1n0","r1n1","r1n2","r1n3","r2n0","r2n1","r2n2","r2n3", # reserve

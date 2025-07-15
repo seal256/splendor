@@ -24,10 +24,6 @@ def plot_purchased_cards():
     plt.plot(cards, regression_line(cards), '-r', label=equation)
     plt.ylabel('human Elo rating (R)')
     plt.xlabel('purchased cards (C)')
-
-    # plt.plot(ratings, cards, 'ob', label="Spendee server data")
-    # plt.xlabel('human Elo rating (R)')
-    # plt.ylabel('purchased cards (C)')
     
     plt.legend()
     plt.show()
@@ -35,7 +31,6 @@ def plot_purchased_cards():
 
 
 def human_ratings_distribution():
-    # Read numbers from the text file
     with open('./assets/human_ratings_online.txt', 'r') as file:
         ratings = [float(line.strip()) for line in file if line.strip()]
 
