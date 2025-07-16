@@ -1,6 +1,12 @@
 from dataclasses import dataclass, field
 from typing import List
-import math, json
+import math
+
+
+@dataclass
+class RandomAgentConfig:
+    type: str = "RandomAgent"
+    name: str = ""
 
 @dataclass
 class NNPolicyConfig:
@@ -32,12 +38,13 @@ class GameConfig:
     num_workers: int = 9
     verbose: bool = False
     save_freqs: bool = True
-    win_points: int = 5
+    win_points: int = 15
     rotate_agents: bool = False
     dump_trajectories: str = ""
 
 @dataclass
 class PlayerStats:
+    name: str
     total_score: float
     win_rate: float
     confidence_interval: float
@@ -88,7 +95,7 @@ def extract_stats(trajectories) -> GameStats:
             idx = traj.agent_names.index(player_names[player])
             total_scores[player] += traj.rewards[idx]
 
-        # Replay game to get the final state
+        # Replay the game to get the final state
         state = traj.initial_state.copy()
         for action in traj.actions:
             state.apply_action(action)
@@ -109,6 +116,6 @@ def extract_stats(trajectories) -> GameStats:
         win_rate = total_scores[player] / sum_scores
         conf_interval = 2.58 * math.sqrt(win_rate * (1.0 - win_rate) / sum_scores) # 99% conf interval
         
-        players_stats.append(PlayerStats(total_scores[player], win_rate, conf_interval, cards_mean, cards_std))
+        players_stats.append(PlayerStats(player_names[player], total_scores[player], win_rate, conf_interval, cards_mean, cards_std))
 
     return GameStats(num_games, players_stats, game_length_mean, game_length_std)

@@ -95,10 +95,10 @@ class SelfPlayTrainer:
         
         agent_a = PolicyMCTSAgentConfig("a", train, NNPolicyConfig(model_a_path))
         agent_b = PolicyMCTSAgentConfig("b", train, NNPolicyConfig(model_b_path)) 
-        config = GameConfig([agent_a, agent_b], num_games, rotate_agents, traj_path)
+        config = GameConfig(agents=[agent_a, agent_b], num_games=num_games, rotate_agents=rotate_agents, dump_trajectories=traj_path)
         
         config_path = f'{self.config.work_dir}/{name_suffix}_step_{step}.json'
-        json.dump(config, open(config_path, 'wt'))
+        json.dump(asdict(config), open(config_path, 'wt'))
         subprocess.run([BINARY_PATH, config_path], check=True)
         
         return traj_path

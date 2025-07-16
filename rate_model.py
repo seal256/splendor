@@ -21,10 +21,10 @@ def run_games_against_mcts(work_dir, name_suffix, step, num_games=1000, train=Fa
     model_name = f'{work_dir}/model_step_{step}.pt'
     agent_a = PolicyMCTSAgentConfig("a", train, NNPolicyConfig(model_name))
     agent_b = MCTSAgentConfig("b", train)
-    config = GameConfig([agent_a, agent_b], num_games, rotate_agents, traj_path)
+    config = GameConfig(agents=[agent_a, agent_b], num_games=num_games, rotate_agents=rotate_agents, dump_trajectories=traj_path)
 
     config_path = f'{work_dir}/{name_suffix}_step_{step}.json'
-    json.dump(config, open(config_path, 'wt'))
+    json.dump(asdict(config), open(config_path, 'wt'))
     subprocess.run([BINARY_PATH, config_path], check=True)
 
     print(f'Created {traj_path}')
@@ -32,7 +32,7 @@ def run_games_against_mcts(work_dir, name_suffix, step, num_games=1000, train=Fa
 
 def rate_against_mcts(work_dir, step_range, name_suffix='model_vs_mcts', overwrite=False):
     '''Runs series of games against a fixed MCTS baseline for a range of models'''
-    
+
     for step in step_range:
         traj_file = run_games_against_mcts(work_dir, name_suffix, step, overwrite=overwrite)
         traj = list(traj_loader(traj_file))

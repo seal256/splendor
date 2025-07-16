@@ -1,6 +1,6 @@
-# MCTS with policy netwok for Splendor table game
+# Monte Carlo Tree Search with Policy Network for Splendor table game
 
-Wide and shallow or thick and toll? This is the question that is on the mind of every Splendor player around the world. They are thinking about their card stacks of course. AI model could give us an answer if trained in an AlphaZero style. This repo is moving towards obtaining a pure "self play from scratch" solution for Splendor.
+Wide and shallow or tall and thin? Every Splendor player faces this strategic dilemma when building their card tableau. This repository explores whether an AlphaZero-inspired approach can provide the optimal answer through pure self-play reinforcement learning. We implement a neural network-guided Monte Carlo Tree Search (MCTS) system that learns to play limited Splendor variant from scratch, progressively improving its strategy through self-play.
 
 ## Table of Contents
 
@@ -9,57 +9,54 @@ Wide and shallow or thick and toll? This is the question that is on the mind of 
 - [Repository Structure](#repository-structure)
 - [Requirements](#requirements)
 - [Usage](#usage)
-- [Implementation Details](#implementation-details)
 - [References](#references)
 
 ## Key Features
 
-- Splendor game logic and MCTS implemented in Python and C++
-- MCTS algorithm with chance node support + embedded neural network policy
-- Action selection policy trained with PyTorch from self play
-- Games are collected with a fast C++ binary, while neural network training is performed in Python
-- Reasonable train speed on a PC due to optimised C++ implementation and parallelisation
-- Minimalistic console game interface
+♣️ **Splendor game logic in Python and C++**  
+🎲 **Monte Carlo Tree Search with proper chance node handling**
+🤖 **Action selection policy trained with PyTorch from self play**
+🔧 **Optimized C++ core for fast game collection even on consumer hardware**
+📈 **AlphaZero-style learning from scratch**  
+🖥️ **Minimalistic console UI** 
 
 ## Experimental Results
 
-### Player level estimation
+### Baselines
 
-Player's Elo rating $R$ is related to win rate $w$ against opponent with rating $R_{\text{opp}}$ by the equation
+We evaluate several baselines in a 2-player Splendor setup. A player's Elo rating $R$ relates to their win rate $w$ against an opponent with rating $R_{\text{opp}}$ via:
 $$
 w = \frac{1}{1 + 10^{(R_{\text{opp}} - R)/400}}
 $$
 
-For Splendor it is hard to find an AI model with confirmed rating. 
-An analysis of human games played on an open game platform Spendee is present on their [forum](https://spendee.mattle.online/lobby/forum/topic/mzXQmzjCBmyC56Dgx/splendor-strategy-data-analysis-part-1). Distributions of some game parameters, such as the number of acquired cards, nobles and game length are reported. Using the correlation between average number of acquired cards and human player rating, we can indirectly estimate the rating of the model. We can loosely assume that the average number of cards purchased by the model is proportional to model's Elo rating. 
+Since established AI benchmarks for Splendor are scarce, I compare common strategies directly:
 
-![Ratings vs Cards](assets/rating_vs_cards.png)
+| Agent                          | Win Rate vs Previous | Elo Rating Increase |
+|---------------------------------|----------------------|---------------------|
+| Random                         | -                    | -                   |
+| MCTS (unrestricted chance nodes)| 0.91 ± 0.02          | +400 ± 40           |
+| MCTS (500 iterations)          | 0.89 ± 0.03          | +360 ± 55           |
+| MCTS (2000 iterations)         | 0.66 ± 0.04          | +115 ± 30           |
 
-### Baselines
-
-I report few baselines for 2 player Splendor setup. Strengths of the baselines are approximately transformed to Elo ratings using purchased cards statistics and the equation from the figure above. 
-
-I found out that the most significant increase in game strngth for MCTS based agents comes from limiting chance nodes children size to 1. Chance nodes correspond to new card draw from the deck after a card purchase. The normal branching factor in the MCTS tree is about 10, while chance nodes have branching factor of 30. 
-
-I didn't find it helpful to train state value function. The accuracy of the value fit was low, and additional noise in Node values only worsened performance. In all current experiments only move selection Policy is used to restrict MCTS search tree and make it deeper. 
+The most significant performance improvement comes from limiting chance nodes (which correspond to random card draws after purchases) to just one child node. While normal branches have about 10 possible actions, chance nodes average to 30 potential outcomes. By restricting these nodes, we effectively prune the search tree, allowing the algorithm to maintain deeper search depth
 
 Increase in the number of MCTS rollouts boosts the performance only slightly, due to large branching factor. In my experience, MCTS gains most from pruning the search tree, increasing it effective depth, and allowing it to reach high value and low variance terminal game states.  
 
-On the RL part, the quality of the training data is essential to make an improvement in performance by adding a policy component to MCTS. 
+Increasing MCTS expansions beyond 500 iterations yields diminishing returns (+115 Elo at 2000 vs 500). The high branching factor of the game favors agressive pruning methods of the MCTS search tree.
 
+Training the state value function proved ineffective in my experiments. The value predictions were inaccurate, and the added noise in node evaluations only degraded performance. In all current implementations, I rely solely on the move selection policy to guide the MCTS search tree, enabling deeper exploration.
 
 ### Limited game self play
 
-I'm currently unable to get a model with an expert human level through self play. Stable training is only achieved for a restricted game rules. For example, when the number of points to win the game is set to 5, self train procedure succesfully learns starting from a random policy model. The resulting model beats MCTS baselines, but still struggles to confidentely win against an experienced human player. 
+At present, I am unable to train a model that reaches expert human-level performance through self-play. Stable training is only achievable under restricted game rules. For example, when the number of points required to win is set to 5, the self-training procedure successfully learns from a random initial policy. The resulting model outperforms MCTS baselines but still struggles to consistently defeat experienced human players.
 
 ![Self paly](assets/elo_wrt_mcts_wp5.png)
 
-Error bars on the figure show 99% confidence interval. For the reference, MCTS is stronger than random player by approximately 750 Elo points (in the win points 5 setup).
+Error bars on the figure indicate a 99% confidence interval. For reference, MCTS is approximately 750 Elo points stronger than a random player (win-points-5 setup, 500 MCTS iterations per move).
 
-![Cards](assets/cards_wp5.png)
+![Cards](assets/cards_and_len_wp5.png)
 
-Error bars on the figure show one standart deviation. Results for the restricted game setup cannot be correlated to human Elo ratings
-
+Error bars represent one standard deviation. The gradual decrease in the number of acquired cards and game length confirms the model's improving strength.
 
 ## Repository Structure
 
@@ -197,9 +194,20 @@ Tests ensure mutual consistency between Python and C++ game logic and feature co
 pytest --tb=long tests
 ```
 
-## Implementation Details
-
 
 ## References
 
-[^spendee_forum] 
+### Papers
+
+[Forecasting Future Behavior: Agents in Board Game Strategy Dametee et al. 2024](sciencedirect.com/science/article/pii/S187705092401737X)
+
+[Rinascimento: Playing Splendor-like Games with
+Event-value Functions Bravi, Lucas 2022](https://qmro.qmul.ac.uk/xmlui/bitstream/handle/123456789/98011/_ToG__Rinascimento__playing_Splendor_like_games_with_Event_value_Functions.pdf)
+
+[Creating an AI opponent with super-human performance for Splendor Simonsson 2023](https://www.diva-portal.org/smash/get/diva2:1779339/FULLTEXT01.pdf)
+
+### Github
+
+[https://github.com/schuber6/Splendor-Bot](https://github.com/schuber6/Splendor-Bot)
+
+[https://github.com/felix-martel/splendor-ai](https://github.com/felix-martel/splendor-ai)
