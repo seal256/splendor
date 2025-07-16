@@ -14,10 +14,15 @@ Wide and shallow or tall and thin? Every Splendor player faces this strategic di
 ## Key Features
 
 ♣️ **Splendor game logic in Python and C++**  
-🎲 **Monte Carlo Tree Search with proper chance node handling**
+
+🎲 **Monte Carlo Tree Search with chance node handling**
+
 🤖 **Action selection policy trained with PyTorch from self play**
+
 🔧 **Optimized C++ core for fast game collection even on consumer hardware**
+
 📈 **AlphaZero-style learning from scratch**  
+
 🖥️ **Minimalistic console UI** 
 
 ## Experimental Results
@@ -25,9 +30,10 @@ Wide and shallow or tall and thin? Every Splendor player faces this strategic di
 ### Baselines
 
 We evaluate several baselines in a 2-player Splendor setup. A player's Elo rating $R$ relates to their win rate $w$ against an opponent with rating $R_{\text{opp}}$ via:
-$$
+
+$
 w = \frac{1}{1 + 10^{(R_{\text{opp}} - R)/400}}
-$$
+$
 
 Since established AI benchmarks for Splendor are scarce, I compare common strategies directly:
 
