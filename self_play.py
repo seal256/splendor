@@ -41,6 +41,18 @@ class SelfPlayConfig:
     max_iters_without_improvement: int = 12 # Early stopping condition: Stop after this many non-improving iterations
     work_dir: str = "data"                  # Directory for output files
     train: TrainConfig = None               # Model train parameters
+    agent: PolicyMCTSAgentConfig = None     # PolicyMCTSAgent parameters 
+
+    @classmethod
+    def from_json(cls, data: dict):
+        """Creates a SelfPlayConfig instance from a dictionary."""
+
+        if 'train' in data and data['train'] is not None:
+            data['train'] = TrainConfig(**data['train'])
+        if 'agent' in data and data['agent'] is not None:
+            data['agent'] = PolicyMCTSAgentConfig(**data['agent'])
+
+        return cls(**data)
 
 class SelfPlayTrainer:
     '''Runs self play iterations and manages all intermediary files in the working directory'''
@@ -60,8 +72,8 @@ class SelfPlayTrainer:
     def train(self):
         """Runs self-play training loop."""
 
-        print('Configuration:')
-        print(asdict(self.config))
+        print('Self play configuration:')
+        print(json.dumps(asdict(self.config), indent=2))
 
         for step in range(self.config.start_step, self.config.max_iterations):
             curr_time = datetime.now().strftime("%d.%m %H:%M:%S")
@@ -87,14 +99,21 @@ class SelfPlayTrainer:
                     print('Stopping', flush=True)
                     break
 
+    def _agent_config(self, name: str, train: bool, model_path: str):
+        agent_config = deepcopy(self.config.agent) if self.config.agent is not None else PolicyMCTSAgentConfig()
+        agent_config.name = name
+        agent_config.train = train
+        agent_config.policy = NNPolicyConfig(model_path=model_path)
+        return agent_config
+
     def _run_games(self, name_suffix: str, step: int, model_a_path: str, model_b_path: str, num_games: int, train: bool, rotate_agents: bool) -> str:
         """Runs games between two models and returns the trajectory path."""
 
         print(f'Running {name_suffix} games step {step}', flush=True)
         traj_path = f'{self.config.work_dir}/traj_{name_suffix}_step_{step}.txt'
         
-        agent_a = PolicyMCTSAgentConfig("a", train, NNPolicyConfig(model_a_path))
-        agent_b = PolicyMCTSAgentConfig("b", train, NNPolicyConfig(model_b_path)) 
+        agent_a = self._agent_config("a", train, model_a_path)
+        agent_b = self._agent_config("b", train, model_b_path) 
         config = GameConfig(agents=[agent_a, agent_b], num_games=num_games, rotate_agents=rotate_agents, dump_trajectories=traj_path)
         
         config_path = f'{self.config.work_dir}/{name_suffix}_step_{step}.json'
@@ -153,7 +172,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     with open(args.config_file) as f:
         data = json.load(f)
-    config = SelfPlayConfig(**data)
+    config = SelfPlayConfig.from_json(data)
     trainer = SelfPlayTrainer(config)
 
     trainer.train()

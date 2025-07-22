@@ -7,7 +7,7 @@ import numpy as np
 from sklearn.metrics import accuracy_score, classification_report
 import random
 import json
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 from typing import Union, List, Optional
 import argparse
 
@@ -228,11 +228,11 @@ def train_loop(model, train_loader, val_loader, optimizer, criterion, device, nu
 
 @dataclass
 class TrainConfig:
-    result_model_name: str                  # Name of the best trained model (according to validation set loss)
-    train_dir: Union[str, List[str]]        # Path prefix(es) for training data files. Accepts either string or list of strings (e.g., ["./data/train1", "./data/train2"])
-    val_dir: Union[str, List[str]]
+    result_model_name: str = ''                                         # Name of the best trained model (according to validation set loss)
+    train_dir: Union[str, List[str]] = field(default_factory=list)      # Path prefix(es) for training data files. Accepts either string or list of strings (e.g., ["./data/train1", "./data/train2"])
+    val_dir: Union[str, List[str]] = field(default_factory=list)
     verbose: bool = True
-    start_model_name: Optional[str] = None  # Pretrained model to start with
+    start_model_name: Optional[str] = None                              # Pretrained model to start with
 
     num_epochs: int = 5
     batch_size: int = 128
