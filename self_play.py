@@ -42,6 +42,7 @@ class SelfPlayConfig:
     work_dir: str = "data"                  # Directory for output files
     train: TrainConfig = None               # Model train parameters
     agent: PolicyMCTSAgentConfig = None     # PolicyMCTSAgent parameters 
+    game: GameConfig = None                 # game paramteters
 
     @classmethod
     def from_json(cls, data: dict):
@@ -51,6 +52,8 @@ class SelfPlayConfig:
             data['train'] = TrainConfig(**data['train'])
         if 'agent' in data and data['agent'] is not None:
             data['agent'] = PolicyMCTSAgentConfig(**data['agent'])
+        if 'game' in data and data['game'] is not None:
+            data['game'] = GameConfig(**data['game'])
 
         return cls(**data)
 
@@ -114,7 +117,11 @@ class SelfPlayTrainer:
         
         agent_a = self._agent_config("a", train, model_a_path)
         agent_b = self._agent_config("b", train, model_b_path) 
-        config = GameConfig(agents=[agent_a, agent_b], num_games=num_games, rotate_agents=rotate_agents, dump_trajectories=traj_path)
+        config = deepcopy(self.config.game) if self.config.game is not None else GameConfig()
+        config.agents=[agent_a, agent_b]
+        config.num_games=num_games 
+        config.rotate_agents=rotate_agents
+        config.dump_trajectories=traj_path
         
         config_path = f'{self.config.work_dir}/{name_suffix}_step_{step}.json'
         json.dump(asdict(config), open(config_path, 'wt'))

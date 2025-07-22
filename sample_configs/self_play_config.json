@@ -14,5 +14,11 @@
     "num_epochs": 1,
     "learning_rate": 0.0003,
     "weight_decay": 0.0003
+  },
+  "agent": {
+    "p_noise_level":0.0
+  },
+  "game": {
+    "win_points": 5
   }
 }
