@@ -1,4 +1,4 @@
-# Monte Carlo Tree Search with Policy Network for Splendor table game
+# Monte Carlo Tree Search with Policy Network for Splendor board game
 
 Wide and shallow or tall and thin? Every Splendor player faces this strategic dilemma when building their card tableau. This repository explores whether an AlphaZero-inspired approach can provide the optimal answer through pure self-play reinforcement learning. We implement a neural network-guided Monte Carlo Tree Search (MCTS) system that learns to play limited Splendor variant from scratch, progressively improving its strategy through self-play.
 
@@ -162,13 +162,13 @@ python play.py -m ./workdir/model.pt
 
 The console game interface shows:
 
-- Game table and player's states. The game uses single-letter color encodings: r (ruby/red), g (emerald/green), b (diamond/blue), w (pearl/white), k (sapphire/black), and y (gold/yellow joker).
+- Game board and player's states. The game uses single-letter color encodings: r (ruby/red), g (emerald/green), b (diamond/blue), w (pearl/white), k (sapphire/black), and y (gold/yellow joker).
 
 - Available nobles with their requirements (e.g. `[3|r3g3k3]` means 3 points for 3 rubies, 3 emeralds and 3 sapphires)
 
 - Development cards grouped by level (0-2), showing their cost and reward (e.g. `[k0|r1g1b2w1]` is a level 0 sapphire card costing 1 ruby, 1 emerald, 2 diamonds and 1 pearl)
 
-- Available gem tokens on the table
+- Available gem tokens on the board
 
 - Each player's current points, collected card bonuses, gem tokens, and reserved cards in hand
 

@@ -85,7 +85,7 @@ class SelfPlayTrainer:
             train_traj, val_traj = self._collect_self_play_data(step)            
             self._prepare_training_data(step, train_traj, val_traj)        
             if len(self.train_dirs) < self.config.train_buffer_size:
-                return False
+                continue
 
             new_model = self._train_new_model(step)
             new_model_win_rate = self._evaluate_model(new_model, step)

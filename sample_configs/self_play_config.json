@@ -19,6 +19,7 @@
     "p_noise_level":0.0
   },
   "game": {
+    "num_workers": 1,
     "win_points": 5
   }
 }
